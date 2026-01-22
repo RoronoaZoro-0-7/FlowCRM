@@ -5,6 +5,59 @@ import crypto from "crypto";
 import bcrypt from "bcryptjs";
 import prisma from "../config/client";
 import jwt from "jsonwebtoken";
+import { sendEmail } from "../utils/sendEmail";
+import { welcomeEmail } from "../utils/emailTemplate";
+
+const register = TryCatch(async (req: Request, res: Response) => {
+    const { name, email, password, orgName } = req.body;
+
+    if (!name || !email || !password || !orgName) {
+        return res.status(400).json({ message: "All fields are required" });
+    }
+
+    // Check existing user
+    const existing = await prisma.user.findUnique({ where: { email } });
+    if (existing) {
+        return res.status(409).json({ message: "Email already registered" });
+    }
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const org = await prisma.organization.create({
+        data: { name: orgName },
+    });
+
+    // Create admin user
+    const user = await prisma.user.create({
+        data: {
+            name,
+            email,
+            password: hashedPassword,
+            role: "ADMIN",
+            orgId: org.id,
+        },
+    });
+
+    // send welcome email
+    const emailResult = await sendEmail(
+        email,
+        "Welcome to FlowCRM",
+        welcomeEmail(name, orgName)
+    );
+    
+    if (!emailResult.success) {
+        console.error("Failed to send welcome email:", emailResult.error);
+    }
+
+    const accessToken = await generateToken(user.id, user.role, res);
+    res.status(201).json({
+        accessToken,
+        user: {
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            role: user.role
+        }
+    });
+});
 
 const login = TryCatch(async (req: Request, res: Response) => {
     const { email, password } = req.body;
@@ -47,6 +100,22 @@ const logout = TryCatch(async (req: Request, res: Response) => {
     res.status(200).json({
         message: "Logged out successfully"
     })
+});
+
+const deleteAll = TryCatch(async (req: Request, res: Response) => {
+    // Delete all data in proper order to respect foreign key constraints
+    await prisma.auditLog.deleteMany();
+    await prisma.notification.deleteMany();
+    await prisma.event.deleteMany();
+    await prisma.refreshToken.deleteMany();
+    await prisma.task.deleteMany();
+    await prisma.activity.deleteMany();
+    await prisma.deal.deleteMany();
+    await prisma.lead.deleteMany();
+    await prisma.user.deleteMany();
+    await prisma.organization.deleteMany();
+
+    res.status(200).json({ message: "All data deleted successfully" });
 });
 
 const refreshToken = TryCatch(async (req: Request, res: Response) => {
@@ -92,4 +161,6 @@ const refreshToken = TryCatch(async (req: Request, res: Response) => {
     res.json({ accessToken });
 });
 
-export { login , logout , refreshToken };
+
+
+export { register, login, logout, refreshToken, deleteAll };

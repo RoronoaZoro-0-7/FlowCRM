@@ -17,6 +17,7 @@
     "@types/express": "^5.0.6",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^25.0.9",
+    "@types/nodemailer": "^7.0.5",
     "bcryptjs": "^3.0.3",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
@@ -33,6 +34,7 @@
   },
   "dependencies": {
     "@prisma/client": "^6.19.2",
+    "nodemailer": "^7.0.12",
     "prisma": "^6.19.2"
   }
 }
