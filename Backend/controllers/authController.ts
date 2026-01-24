@@ -42,12 +42,12 @@ const register = TryCatch(async (req: Request, res: Response) => {
         "Welcome to FlowCRM",
         welcomeEmail(name, orgName)
     );
-    
+
     if (!emailResult.success) {
         console.error("Failed to send welcome email:", emailResult.error);
     }
 
-    const accessToken = await generateToken(user.id, user.role, res);
+    const accessToken = await generateToken(user.id, user.role, res, org.id);
     res.status(201).json({
         accessToken,
         user: {
@@ -71,7 +71,7 @@ const login = TryCatch(async (req: Request, res: Response) => {
         return res.status(401).json({ message: "Invalid Credentials" });
     }
 
-    const accessToken = await generateToken(user.id, user.role, res);
+    const accessToken = await generateToken(user.id, user.role, res, user.orgId);
     res.status(200).json({
         accessToken,
         user: {
@@ -84,22 +84,46 @@ const login = TryCatch(async (req: Request, res: Response) => {
 });
 
 const logout = TryCatch(async (req: Request, res: Response) => {
-    const token = req.cookies.refreshToken;
-    if (!token) {
-        res.status(400).json({ message: "No refresh token found" });
-        return;
+    if (!req.user) {
+        return res.status(401).json({ message: "Not authenticated" });
     }
-    const hash = crypto.createHash("sha256").
-        update(token).
-        digest("hex");
-    await prisma.refreshToken.updateMany({
-        where: { tokenHash: hash },
-        data: { revoked: true }
+
+    const refreshToken = req.cookies?.refreshToken;
+
+    if (!refreshToken) {
+        return res.status(401).json({ message: "No active session" });
+    }
+
+    const tokenHash = crypto
+        .createHash("sha256")
+        .update(refreshToken)
+        .digest("hex");
+
+    const session = await prisma.refreshToken.findFirst({
+        where: {
+            tokenHash,
+            userId: req.user.userId,
+            revoked: false,
+            expiresAt: { gt: new Date() },
+        },
     });
-    res.clearCookie("refreshToken");
-    res.status(200).json({
-        message: "Logged out successfully"
-    })
+
+    if (!session) {
+        return res.status(401).json({ message: "Session already expired" });
+    }
+
+    await prisma.refreshToken.update({
+        where: { id: session.id },
+        data: { revoked: true },
+    });
+
+    res.clearCookie("refreshToken", {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+    });
+
+    res.status(200).json({ message: "Logged out successfully" });
 });
 
 const deleteAll = TryCatch(async (req: Request, res: Response) => {

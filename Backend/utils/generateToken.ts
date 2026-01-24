@@ -3,13 +3,13 @@ import { Response } from "express";
 import prisma from "../config/client";
 import crypto from "crypto";
 
-const generateToken = async ( userId:string,role:string,res:Response ) => {
+const generateToken = async ( userId:string,role:string,res:Response, orgId:string ) => {
     const accessToken = jwt.sign(
-        {userId,role},
+        {userId,role,orgId},
         process.env.JWT_SECRET as string,
-        {expiresIn: "15m"});
+        {expiresIn: "7d"});
     const refreshToken = jwt.sign(
-        {userId},
+        {userId, orgId},
         process.env.REFRESH_TOKEN as string,
         {expiresIn: "7d"});
     

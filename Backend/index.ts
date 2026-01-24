@@ -3,18 +3,28 @@ import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
 import authRoutes from './routes/authRoutes';
+import leadRoutes from './routes/leadRoutes';
+import userRoutes from './routes/userRoutes';
 
 dotenv.config();
 const app = express();
-app.use(cors());
-app.use(cookieParser());
+
+// Middleware order is important
+app.use(cors({
+    origin: true,
+    credentials: true
+}));
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
 
 app.get('/', (req, res) => {
     res.send('Hello, World!');
 });
 
-app.use("/api/auth",authRoutes);
+app.use("/api/auth", authRoutes);
+app.use("/api/leads", leadRoutes);
+app.use("/api/users", userRoutes);
 
 app.listen(3000, () => {
     console.log('Server is running on port 3000');
