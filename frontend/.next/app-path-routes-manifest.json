@@ -1,0 +1,13 @@
+{
+  "/_global-error/page": "/_global-error",
+  "/_not-found/page": "/_not-found",
+  "/dashboard/page": "/dashboard",
+  "/deals/page": "/deals",
+  "/leads/page": "/leads",
+  "/login/page": "/login",
+  "/notifications/page": "/notifications",
+  "/page": "/",
+  "/settings/page": "/settings",
+  "/tasks/page": "/tasks",
+  "/users/page": "/users"
+}

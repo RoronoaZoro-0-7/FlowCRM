@@ -1,11 +1,15 @@
 import { Request, Response } from "express";
 import { TryCatch } from "../utils/tryCatch";
 import prisma from "../config/client";
-import { LeadStatus } from "@prisma/client";
+import { LeadStatus, NotificationType } from "@prisma/client";
+import { getIO } from "../index";
+import { sendNotificationToOrg } from "../utils/socketNotification";
+import { emitLeadEvent, EventType } from "../services/eventEmitter";
+import { invalidateDashboardCache } from "../services/cacheService";
 
 // Create a new lead
 const createLead = TryCatch(async (req: Request, res: Response) => {
-    const { name, email, company, source, status } = req.body;
+    const { name, email, company, source, status, value, assignedToId, phone } = req.body;
     const userId = req.user?.userId;
     const orgId = req.user?.orgId;
 
@@ -17,15 +21,24 @@ const createLead = TryCatch(async (req: Request, res: Response) => {
         return res.status(401).json({ message: "User not authenticated" });
     }
 
+    // Get creator name for notification
+    const creator = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { name: true }
+    });
+
     const lead = await prisma.lead.create({
         data: {
             name,
             email,
+            phone,
             company,
             source,
+            value: value || 0,
             status: status || LeadStatus.NEW,
             orgId: orgId,
             ownerId: userId,
+            assignedToId,
         },
         include: {
             owner: {
@@ -34,9 +47,40 @@ const createLead = TryCatch(async (req: Request, res: Response) => {
                     name: true,
                     email: true,
                 }
+            },
+            assignedTo: {
+                select: {
+                    id: true,
+                    name: true,
+                    email: true,
+                }
             }
         }
     });
+
+    // Emit event for event-driven architecture
+    await emitLeadEvent(
+        EventType.LEAD_CREATED,
+        userId,
+        orgId,
+        lead.id,
+        lead.name,
+        { assignedTo: assignedToId, notifyAssignee: !!assignedToId }
+    );
+
+    // Invalidate dashboard cache
+    await invalidateDashboardCache(orgId);
+
+    // Notify org members about new lead (existing functionality)
+    const io = getIO();
+    await sendNotificationToOrg(
+        io,
+        orgId,
+        NotificationType.LEAD_ASSIGNED,
+        "New Lead Added",
+        `${creator?.name || 'Someone'} added a new lead: "${name}"`,
+        userId // exclude the creator
+    );
 
     res.status(201).json({ message: "Lead created successfully", lead });
 });
@@ -93,7 +137,7 @@ const getLeadById = TryCatch(async (req: Request, res: Response) => {
                 orderBy: { createdAt: 'desc' }
             },
             tasks: true,
-            deal: true
+            deals: true
         }
     });
 
@@ -170,6 +214,29 @@ const updateLead = TryCatch(async (req: Request, res: Response) => {
         }
     });
 
+    // Emit appropriate event
+    if (status && status !== existingLead.status) {
+        await emitLeadEvent(
+            EventType.LEAD_STATUS_CHANGED,
+            userId,
+            user.orgId!,
+            updatedLead.id,
+            updatedLead.name,
+            { previousStatus: existingLead.status, newStatus: status }
+        );
+    } else {
+        await emitLeadEvent(
+            EventType.LEAD_UPDATED,
+            userId,
+            user.orgId!,
+            updatedLead.id,
+            updatedLead.name
+        );
+    }
+
+    // Invalidate dashboard cache
+    await invalidateDashboardCache(user.orgId!);
+
     res.status(200).json({ message: "Lead updated successfully", lead: updatedLead });
 });
 
@@ -210,6 +277,18 @@ const deleteLead = TryCatch(async (req: Request, res: Response) => {
         prisma.deal.deleteMany({ where: { leadId: id } }),
         prisma.lead.delete({ where: { id } })
     ]);
+
+    // Emit delete event
+    await emitLeadEvent(
+        EventType.LEAD_DELETED,
+        userId,
+        user.orgId!,
+        id,
+        lead.name
+    );
+
+    // Invalidate dashboard cache
+    await invalidateDashboardCache(user.orgId!);
 
     res.status(200).json({ message: "Lead deleted successfully" });
 });

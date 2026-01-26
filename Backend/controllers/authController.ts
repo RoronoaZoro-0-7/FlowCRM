@@ -60,7 +60,7 @@ const register = TryCatch(async (req: Request, res: Response) => {
 });
 
 const login = TryCatch(async (req: Request, res: Response) => {
-    const { email, password } = req.body;
+    const { email, password, twoFactorToken } = req.body;
     const user = await prisma.user.findUnique({ where: { email } });
     if (!user) {
         return res.status(401).json({ message: "Invalid Credentials" });
@@ -69,6 +69,31 @@ const login = TryCatch(async (req: Request, res: Response) => {
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
         return res.status(401).json({ message: "Invalid Credentials" });
+    }
+
+    // Check if 2FA is enabled
+    if (user.twoFactorEnabled) {
+        if (!twoFactorToken) {
+            // Return requires2FA flag so frontend can show 2FA input
+            return res.status(200).json({
+                requires2FA: true,
+                userId: user.id,
+                message: "2FA verification required"
+            });
+        }
+
+        // Verify 2FA token
+        const speakeasy = require("speakeasy");
+        const verified = speakeasy.totp.verify({
+            secret: user.twoFactorSecret,
+            encoding: "base32",
+            token: twoFactorToken,
+            window: 1,
+        });
+
+        if (!verified) {
+            return res.status(401).json({ message: "Invalid 2FA code" });
+        }
     }
 
     const accessToken = await generateToken(user.id, user.role, res, user.orgId);

@@ -55,11 +55,12 @@ model Organization {
   name      String
   createdAt DateTime @default(now())
 
-  users  User[]
-  leads  Lead[]
-  events Event[]
-  audits AuditLog[]
-  tasks  Task[]
+  users         User[]
+  leads         Lead[]
+  deals         Deal[]
+  events        Event[]
+  audits        AuditLog[]
+  tasks         Task[]
   notifications Notification[]
   @@map("organizations")
 }
@@ -72,18 +73,25 @@ model User {
   role      Role     @default(SALES)
   createdAt DateTime @default(now())
 
+  // 2FA fields
+  twoFactorEnabled Boolean  @default(false)
+  twoFactorSecret  String?
+
   // Each user belongs to exactly one organization
   orgId String
   org   Organization @relation(fields: [orgId], references: [id])
 
   // Relations
-  ownedLeads    Lead[]
-  activities    Activity[]
-  assignedTasks Task[]          @relation("AssignedTasks")
-  createdTasks  Task[]          @relation("CreatedTasks")
-  notifications Notification[]
-  refreshTokens RefreshToken[]
-  auditLogs     AuditLog[]
+  ownedLeads     Lead[]         @relation("OwnedLeads")
+  assignedLeads  Lead[]         @relation("AssignedLeads")
+  assignedDeals  Deal[]         @relation("AssignedDeals")
+  activities     Activity[]
+  assignedTasks  Task[]         @relation("AssignedTasks")
+  createdTasks   Task[]         @relation("CreatedTasks")
+  notifications  Notification[]
+  refreshTokens  RefreshToken[]
+  auditLogs      AuditLog[]
+  events         Event[]
 
   @@map("users")
 }
@@ -92,34 +100,51 @@ model Lead {
   id      String     @id @default(uuid())
   name    String
   email   String?
+  phone   String?
   company String?
   source  String?
   status  LeadStatus @default(NEW)
+  value   Int        @default(0)
 
   orgId   String
   ownerId String
+  assignedToId String?
 
-  org   Organization @relation(fields: [orgId], references: [id])
-  owner User         @relation(fields: [ownerId], references: [id])
+  org        Organization @relation(fields: [orgId], references: [id])
+  owner      User         @relation("OwnedLeads", fields: [ownerId], references: [id])
+  assignedTo User?        @relation("AssignedLeads", fields: [assignedToId], references: [id])
 
   activities Activity[]
   tasks      Task[]
-  deal       Deal?
+  deals      Deal[]
 
   createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
 
   @@map("leads")
 }
 
 model Deal {
-  id        String    @id @default(uuid())
-  value     Int
-  currency  String
-  stage     String
-  closeDate DateTime?
+  id                String    @id @default(uuid())
+  name              String
+  value             Int       @default(0)
+  stage             String    @default("QUALIFICATION")
+  expectedCloseDate DateTime?
+  closeDate         DateTime?
 
-  leadId String @unique
-  lead   Lead   @relation(fields: [leadId], references: [id])
+  orgId        String
+  org          Organization @relation(fields: [orgId], references: [id])
+
+  leadId       String?
+  lead         Lead?    @relation(fields: [leadId], references: [id])
+
+  assignedToId String?
+  assignedTo   User?    @relation("AssignedDeals", fields: [assignedToId], references: [id])
+
+  tasks        Task[]
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @default(now()) @updatedAt
 
   @@map("deals")
 }
@@ -151,6 +176,9 @@ model Task {
   leadId       String?
   lead         Lead?        @relation(fields: [leadId], references: [id])
 
+  dealId       String?
+  deal         Deal?        @relation(fields: [dealId], references: [id])
+
   assignedToId String
   assignedTo   User         @relation("AssignedTasks", fields: [assignedToId], references: [id])
 
@@ -172,6 +200,7 @@ model Notification {
   title     String
   message   String
   type      NotificationType
+  link      String?
 
   isRead    Boolean  @default(false)
 
@@ -189,6 +218,9 @@ model Event {
   type    String
   payload Json
 
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id])
+
   orgId String
   org   Organization @relation(fields: [orgId], references: [id])
 
@@ -200,11 +232,11 @@ model Event {
 model AuditLog {
   id         String @id @default(uuid())
   action     String
-  entityType String
-  entityId   String
-
-  oldValue Json?
-  newValue Json?
+  entityType String?
+  entityId   String?
+  
+  changes    Json?
+  ipAddress  String?
 
   userId String
   orgId  String

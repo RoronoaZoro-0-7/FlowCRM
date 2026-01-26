@@ -1,6 +1,9 @@
 import { Request, Response } from "express";
 import prisma from "../config/client";
 import { TryCatch } from "../utils/tryCatch";
+import { getIO } from "../index";
+import { sendNotification } from "../utils/socketNotification";
+import { NotificationType } from "@prisma/client";
 
 const createTask = TryCatch(async (req: Request, res: Response) => {
   if (!req.user) return res.status(401).json({ message: "Not authenticated" });
@@ -13,7 +16,7 @@ const createTask = TryCatch(async (req: Request, res: Response) => {
 
   const creator = await prisma.user.findUnique({
     where: { id: req.user.userId },
-    select: { id: true, role: true, orgId: true },
+    select: { id: true, role: true, orgId: true, name: true },
   });
 
   if (!creator) return res.status(401).json({ message: "User not found" });
@@ -47,6 +50,17 @@ const createTask = TryCatch(async (req: Request, res: Response) => {
       orgId: creator.orgId,
     },
   });
+
+  // Send real-time notification to assignee
+  if (assignedToId !== creator.id) {
+    const io = getIO();
+    await sendNotification(io, {
+      userId: assignedToId,
+      type: NotificationType.TASK_ASSIGNED,
+      title: "New Task Assigned",
+      message: `${creator.name} assigned you a new task: "${title}"`,
+    });
+  }
 
   res.status(201).json(task);
 });
