@@ -39,7 +39,7 @@ var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$navi
 ;
 ;
 ;
-const API_BASE = 'http://localhost:3000/api';
+const API_BASE = ("TURBOPACK compile-time value", "http://localhost:3000/api") || 'http://localhost:3000/api';
 const AuthContext = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["createContext"])(undefined);
 function AuthProvider({ children }) {
     const [user, setUser] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(null);
@@ -66,7 +66,7 @@ function AuthProvider({ children }) {
         };
         checkAuth();
     }, []);
-    const login = async (email, password)=>{
+    const login = async (email, password, twoFactorToken)=>{
         try {
             const response = await fetch(`${API_BASE}/auth/login`, {
                 method: 'POST',
@@ -76,7 +76,8 @@ function AuthProvider({ children }) {
                 credentials: 'include',
                 body: JSON.stringify({
                     email,
-                    password
+                    password,
+                    twoFactorToken
                 })
             });
             if (!response.ok) {
@@ -84,12 +85,20 @@ function AuthProvider({ children }) {
                 throw new Error(error.message || 'Login failed');
             }
             const data = await response.json();
+            // Check if 2FA is required
+            if (data.requires2FA) {
+                return {
+                    requires2FA: true,
+                    userId: data.userId
+                };
+            }
             const { accessToken: token, user: userData } = data;
             localStorage.setItem('accessToken', token);
             localStorage.setItem('user', JSON.stringify(userData));
             setAccessToken(token);
             setUser(userData);
             router.push('/dashboard');
+            return {};
         } catch (error) {
             console.error('[v0] Login error:', error);
             throw error;
@@ -129,7 +138,7 @@ function AuthProvider({ children }) {
         children: children
     }, void 0, false, {
         fileName: "[project]/contexts/auth-context.tsx",
-        lineNumber: 112,
+        lineNumber: 119,
         columnNumber: 5
     }, this);
 }
@@ -245,6 +254,8 @@ var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$sonner$2f$di
 ;
 ;
 ;
+const API_BASE = ("TURBOPACK compile-time value", "http://localhost:3000/api") || 'http://localhost:3000/api';
+const SOCKET_URL = ("TURBOPACK compile-time value", "http://localhost:3000") || 'http://localhost:3000';
 const SocketContext = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["createContext"])(undefined);
 function SocketProvider({ children }) {
     const [socket, setSocket] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(null);
@@ -262,7 +273,7 @@ function SocketProvider({ children }) {
             return;
         }
         // Connect to socket server
-        const newSocket = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$socket$2e$io$2d$client$2f$build$2f$esm$2d$debug$2f$index$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$locals$3e$__["io"])('http://localhost:3000', {
+        const newSocket = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$socket$2e$io$2d$client$2f$build$2f$esm$2d$debug$2f$index$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$locals$3e$__["io"])(SOCKET_URL, {
             withCredentials: true
         });
         newSocket.on('connect', ()=>{
@@ -315,7 +326,7 @@ function SocketProvider({ children }) {
         try {
             const token = localStorage.getItem('accessToken');
             if (!token) return;
-            const response = await fetch('http://localhost:3000/api/notifications', {
+            const response = await fetch(`${API_BASE}/notifications`, {
                 headers: {
                     Authorization: `Bearer ${token}`
                 },
@@ -333,7 +344,7 @@ function SocketProvider({ children }) {
         try {
             const token = localStorage.getItem('accessToken');
             if (!token) return;
-            await fetch(`http://localhost:3000/api/notifications/${id}/read`, {
+            await fetch(`${API_BASE}/notifications/${id}/read`, {
                 method: 'POST',
                 headers: {
                     Authorization: `Bearer ${token}`
@@ -348,7 +359,7 @@ function SocketProvider({ children }) {
         try {
             const token = localStorage.getItem('accessToken');
             if (!token) return;
-            await fetch('http://localhost:3000/api/notifications/mark-all-read', {
+            await fetch(`${API_BASE}/notifications/mark-all-read`, {
                 method: 'POST',
                 headers: {
                     Authorization: `Bearer ${token}`
@@ -372,7 +383,7 @@ function SocketProvider({ children }) {
         children: children
     }, void 0, false, {
         fileName: "[project]/contexts/socket-context.tsx",
-        lineNumber: 153,
+        lineNumber: 156,
         columnNumber: 9
     }, this);
 }

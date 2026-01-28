@@ -42,7 +42,7 @@ io.on('connection', (socket) => {
         socket.join(`user:${userId}`);
         console.log(`👤 User ${userId} joined with socket ${socket.id}`);
     });
-
+``
     // Join organization room for broadcast events
     socket.on('joinOrg', (orgId: string) => {
         socket.join(`org:${orgId}`);

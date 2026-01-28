@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api'
 
-export type UserRole = 'ADMIN' | 'MANAGER' | 'SALES'
+export type UserRole = 'OWNER' | 'ADMIN' | 'MANAGER' | 'SALES'
 
 export interface User {
   id: string

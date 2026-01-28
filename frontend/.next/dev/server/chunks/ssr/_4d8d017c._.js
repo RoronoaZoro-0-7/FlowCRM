@@ -692,7 +692,7 @@ __turbopack_context__.s([
     "updateUser",
     ()=>updateUser
 ]);
-const API_BASE = 'http://localhost:3000/api';
+const API_BASE = ("TURBOPACK compile-time value", "http://localhost:3000/api") || 'http://localhost:3000/api';
 async function makeRequest(endpoint, options = {}) {
     const token = localStorage.getItem('accessToken');
     const headers = {

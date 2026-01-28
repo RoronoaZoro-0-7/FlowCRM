@@ -15,9 +15,11 @@ import {
   LogOut,
   Menu,
   X,
+  Building2,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useState } from 'react'
+import { ThemeToggle } from '@/components/theme-toggle'
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -32,6 +34,12 @@ const adminNavItems = [
   { href: '/settings', label: 'Settings', icon: Settings },
 ]
 
+const ownerNavItems = [
+  { href: '/organizations', label: 'Organizations', icon: Building2 },
+  { href: '/users', label: 'Users & Roles', icon: Users },
+  { href: '/settings', label: 'Settings', icon: Settings },
+]
+
 export function SidebarNav() {
   const { user, logout } = useAuth()
   const { unreadCount } = useSocket()
@@ -40,8 +48,12 @@ export function SidebarNav() {
 
   if (!user) return null
 
+  const isOwner = user.role === 'OWNER'
   const isAdmin = user.role === 'ADMIN'
-  const allNavItems = [...navItems, ...(isAdmin ? adminNavItems : [])]
+  
+  // Owner sees owner nav items, Admin sees admin nav items
+  const additionalNavItems = isOwner ? ownerNavItems : isAdmin ? adminNavItems : []
+  const allNavItems = [...navItems, ...additionalNavItems]
 
   const handleLogout = async () => {
     await logout()
@@ -49,7 +61,7 @@ export function SidebarNav() {
 
   const NavContent = () => (
     <>
-      <div className="flex flex-col gap-0.5">
+      <div className="flex flex-col gap-1">
         {allNavItems.map((item) => {
           const Icon = item.icon
           const isActive = pathname === item.href
@@ -59,7 +71,10 @@ export function SidebarNav() {
               <Button
                 variant={isActive ? 'secondary' : 'ghost'}
                 size="sm"
-                className="w-full justify-start gap-2 relative"
+                className={cn(
+                  "w-full justify-start gap-3 relative h-10 px-3",
+                  isActive && "bg-primary/10 text-primary font-medium"
+                )}
                 onClick={() => setIsOpen(false)}
               >
                 <Icon className="h-4 w-4" />
@@ -75,11 +90,15 @@ export function SidebarNav() {
         })}
       </div>
 
-      <div className="border-t border-border/50 pt-4">
+      <div className="border-t border-border/50 pt-4 space-y-2">
+        <div className="flex items-center justify-between px-3 py-2">
+          <span className="text-sm text-muted-foreground">Theme</span>
+          <ThemeToggle />
+        </div>
         <Button
           variant="ghost"
           size="sm"
-          className="w-full justify-start gap-2 text-destructive hover:text-destructive"
+          className="w-full justify-start gap-3 h-10 px-3 text-destructive hover:text-destructive hover:bg-destructive/10"
           onClick={handleLogout}
         >
           <LogOut className="h-4 w-4" />
@@ -92,44 +111,69 @@ export function SidebarNav() {
   return (
     <>
       {/* Desktop Sidebar */}
-      <aside className="hidden h-screen w-60 border-r border-border/50 bg-sidebar p-4 flex-col lg:flex sticky top-0">
-        <div className="mb-8">
-          <h1 className="text-xl font-bold text-sidebar-foreground">FlowCRM</h1>
-          <p className="text-xs text-sidebar-foreground/60 mt-1">
-            {user.name}
-          </p>
-          <div className="inline-block mt-2 rounded-full bg-sidebar-primary/20 px-2 py-1">
-            <p className="text-xs font-medium text-sidebar-primary">
-              {user.role}
-            </p>
+      <aside className="hidden h-screen w-64 border-r border-border bg-card/50 backdrop-blur-sm flex-col lg:flex sticky top-0">
+        <div className="p-6 border-b border-border">
+          <h1 className="text-xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+            FlowCRM
+          </h1>
+          <div className="mt-4 flex items-center gap-3">
+            <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+              <span className="text-sm font-semibold text-primary">
+                {user.name?.charAt(0).toUpperCase()}
+              </span>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium truncate">{user.name}</p>
+              <span className="inline-flex items-center rounded-md bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+                {user.role}
+              </span>
+            </div>
           </div>
         </div>
 
-        <nav className="flex flex-col flex-1 gap-2">
+        <nav className="flex flex-col flex-1 p-4 gap-2">
           <NavContent />
         </nav>
       </aside>
 
       {/* Mobile Sidebar Toggle */}
-      <div className="sticky top-0 z-40 flex items-center justify-between border-b border-border/50 bg-background/95 px-4 py-3 lg:hidden">
-        <h1 className="text-lg font-bold">FlowCRM</h1>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => setIsOpen(!isOpen)}
-        >
-          {isOpen ? (
-            <X className="h-5 w-5" />
-          ) : (
-            <Menu className="h-5 w-5" />
-          )}
-        </Button>
+      <div className="sticky top-0 z-40 flex items-center justify-between border-b border-border bg-background/95 backdrop-blur-sm px-4 py-3 lg:hidden">
+        <h1 className="text-lg font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+          FlowCRM
+        </h1>
+        <div className="flex items-center gap-2">
+          <ThemeToggle />
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setIsOpen(!isOpen)}
+          >
+            {isOpen ? (
+              <X className="h-5 w-5" />
+            ) : (
+              <Menu className="h-5 w-5" />
+            )}
+          </Button>
+        </div>
       </div>
 
       {/* Mobile Sidebar */}
       {isOpen && (
-        <div className="fixed inset-0 top-16 z-30 bg-background/80 backdrop-blur-sm lg:hidden">
-          <div className="border-r border-border/50 bg-sidebar p-4">
+        <div className="fixed inset-0 top-16 z-30 bg-background/80 backdrop-blur-sm lg:hidden" onClick={() => setIsOpen(false)}>
+          <div className="w-64 border-r border-border bg-card/95 backdrop-blur-sm p-4 h-full" onClick={(e) => e.stopPropagation()}>
+            <div className="mb-4 flex items-center gap-3 pb-4 border-b border-border">
+              <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                <span className="text-sm font-semibold text-primary">
+                  {user.name?.charAt(0).toUpperCase()}
+                </span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium truncate">{user.name}</p>
+                <span className="inline-flex items-center rounded-md bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+                  {user.role}
+                </span>
+              </div>
+            </div>
             <nav className="space-y-2">
               <NavContent />
             </nav>
