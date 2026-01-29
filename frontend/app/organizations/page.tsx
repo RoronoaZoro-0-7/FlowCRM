@@ -2,6 +2,7 @@
 
 import { AppLayout } from '@/app/layout-app'
 import { useAuth } from '@/contexts/auth-context'
+import { getOrganizations } from '@/lib/api-service'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -23,6 +24,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { useRouter } from 'next/navigation'
+import { toast } from 'sonner'
 
 interface Organization {
   id: string
@@ -65,56 +67,20 @@ export default function OrganizationsPage() {
 
     const fetchOrganizations = async () => {
       try {
-        const response = await fetch('http://localhost:3000/api/organizations', {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
-          },
-        })
-
-        if (response.ok) {
-          const data = await response.json()
-          setOrganizations(data.organizations || [])
-          setStats(data.stats || null)
-        }
+        const data = await getOrganizations() as { organizations: Organization[], stats: OrganizationStats }
+        setOrganizations(data.organizations || [])
+        setStats(data.stats || null)
       } catch (error) {
         console.error('Failed to fetch organizations:', error)
-        // For demo, show mock data
-        setOrganizations([
-          {
-            id: 'org-techcorp-001',
-            name: 'TechCorp Solutions',
-            createdAt: '2024-01-15T00:00:00Z',
-            _count: { users: 6, leads: 50, deals: 30, tasks: 40 },
-            stats: { totalRevenue: 1250000, activeDeals: 18, conversionRate: 24 }
-          },
-          {
-            id: 'org-startuphub-001',
-            name: 'StartupHub Inc',
-            createdAt: '2024-03-20T00:00:00Z',
-            _count: { users: 3, leads: 15, deals: 8, tasks: 12 },
-            stats: { totalRevenue: 340000, activeDeals: 5, conversionRate: 32 }
-          },
-          {
-            id: 'demo-org-001',
-            name: 'Demo Company',
-            createdAt: '2024-06-01T00:00:00Z',
-            _count: { users: 3, leads: 10, deals: 5, tasks: 8 },
-            stats: { totalRevenue: 150000, activeDeals: 3, conversionRate: 20 }
-          },
-        ])
-        setStats({
-          totalOrganizations: 3,
-          totalUsers: 12,
-          totalLeads: 75,
-          totalDeals: 43,
-          totalRevenue: 1740000,
-        })
+        toast.error('Failed to load organizations')
       } finally {
         setLoading(false)
       }
     }
 
-    fetchOrganizations()
+    if (user?.role === 'OWNER') {
+      fetchOrganizations()
+    }
   }, [user, router])
 
   if (user?.role !== 'OWNER') {

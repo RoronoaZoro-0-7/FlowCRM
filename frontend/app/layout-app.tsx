@@ -10,8 +10,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     <ProtectedRoute>
       <div className="flex h-screen bg-background">
         <SidebarNav />
-        <main className="flex-1 overflow-auto">
-          <div className="p-6">
+        <main className="flex-1 overflow-auto bg-muted/30">
+          <div className="container mx-auto max-w-7xl p-6 lg:p-8">
             {children}
           </div>
         </main>

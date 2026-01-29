@@ -1,11 +1,11 @@
 'use client'
 
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
+import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from 'react'
 import { io, Socket } from 'socket.io-client'
 import { useAuth } from './auth-context'
 import { toast } from 'sonner'
+import { makeRequest } from '@/lib/api-service'
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api'
 const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3000'
 
 interface Notification {
@@ -22,8 +22,9 @@ interface SocketContextType {
     isConnected: boolean
     notifications: Notification[]
     unreadCount: number
-    markAsRead: (id: string) => void
-    markAllAsRead: () => void
+    markAsRead: (id: string) => Promise<void>
+    markAllAsRead: () => Promise<void>
+    refreshNotifications: () => Promise<void>
 }
 
 const SocketContext = createContext<SocketContextType | undefined>(undefined)
@@ -34,6 +35,17 @@ export function SocketProvider({ children }: { children: ReactNode }) {
     const [notifications, setNotifications] = useState<Notification[]>([])
     const { user, accessToken } = useAuth()
 
+    const fetchNotifications = useCallback(async () => {
+        if (!accessToken) return
+
+        try {
+            const data = await makeRequest<Notification[]>('/notifications')
+            setNotifications(data)
+        } catch (error) {
+            console.error('Failed to fetch notifications:', error)
+        }
+    }, [accessToken])
+
     useEffect(() => {
         if (!user || !accessToken) {
             // Disconnect if user logs out
@@ -41,6 +53,7 @@ export function SocketProvider({ children }: { children: ReactNode }) {
                 socket.disconnect()
                 setSocket(null)
                 setIsConnected(false)
+                setNotifications([])
             }
             return
         }
@@ -74,9 +87,9 @@ export function SocketProvider({ children }: { children: ReactNode }) {
         })
 
         // Listen for read status updates
-        newSocket.on('notification:read', (notification: Notification) => {
+        newSocket.on('notification:read', (data: { id: string }) => {
             setNotifications(prev =>
-                prev.map(n => (n.id === notification.id ? { ...n, isRead: true } : n))
+                prev.map(n => (n.id === data.id ? { ...n, isRead: true } : n))
             )
         })
 
@@ -95,39 +108,13 @@ export function SocketProvider({ children }: { children: ReactNode }) {
         }
     }, [user, accessToken])
 
-    const fetchNotifications = async () => {
-        try {
-            const token = localStorage.getItem('accessToken')
-            if (!token) return
-
-            const response = await fetch(`${API_BASE}/notifications`, {
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                },
-                credentials: 'include',
-            })
-
-            if (response.ok) {
-                const data = await response.json()
-                setNotifications(data)
-            }
-        } catch (error) {
-            console.error('Failed to fetch notifications:', error)
-        }
-    }
-
     const markAsRead = async (id: string) => {
         try {
-            const token = localStorage.getItem('accessToken')
-            if (!token) return
-
-            await fetch(`${API_BASE}/notifications/${id}/read`, {
-                method: 'POST',
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                },
-                credentials: 'include',
-            })
+            await makeRequest(`/notifications/${id}/read`, { method: 'POST' })
+            // Update local state immediately
+            setNotifications(prev =>
+                prev.map(n => (n.id === id ? { ...n, isRead: true } : n))
+            )
         } catch (error) {
             console.error('Failed to mark notification as read:', error)
         }
@@ -135,16 +122,9 @@ export function SocketProvider({ children }: { children: ReactNode }) {
 
     const markAllAsRead = async () => {
         try {
-            const token = localStorage.getItem('accessToken')
-            if (!token) return
-
-            await fetch(`${API_BASE}/notifications/mark-all-read`, {
-                method: 'POST',
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                },
-                credentials: 'include',
-            })
+            await makeRequest('/notifications/mark-all-read', { method: 'POST' })
+            // Update local state immediately
+            setNotifications(prev => prev.map(n => ({ ...n, isRead: true })))
         } catch (error) {
             console.error('Failed to mark all notifications as read:', error)
         }
@@ -161,6 +141,7 @@ export function SocketProvider({ children }: { children: ReactNode }) {
                 unreadCount,
                 markAsRead,
                 markAllAsRead,
+                refreshNotifications: fetchNotifications,
             }}
         >
             {children}

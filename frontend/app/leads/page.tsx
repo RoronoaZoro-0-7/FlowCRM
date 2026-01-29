@@ -13,6 +13,7 @@ export default function LeadsPage() {
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null)
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false)
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
+  const [refreshTrigger, setRefreshTrigger] = useState(0)
 
   const handleViewLead = (lead: Lead) => {
     setSelectedLead(lead)
@@ -27,6 +28,10 @@ export default function LeadsPage() {
   const handleDeleteLead = async (id: string) => {
     // TODO: Implement delete
     console.log('Delete lead:', id)
+  }
+
+  const handleLeadCreated = () => {
+    setRefreshTrigger((prev) => prev + 1)
   }
 
   return (
@@ -58,6 +63,7 @@ export default function LeadsPage() {
               onViewLead={handleViewLead}
               onEditLead={handleEditLead}
               onDeleteLead={handleDeleteLead}
+              refreshTrigger={refreshTrigger}
             />
           </div>
         </Card>
@@ -74,6 +80,7 @@ export default function LeadsPage() {
         <CreateLeadModal
           isOpen={isCreateModalOpen}
           onClose={() => setIsCreateModalOpen(false)}
+          onSuccess={handleLeadCreated}
         />
       </div>
     </AppLayout>

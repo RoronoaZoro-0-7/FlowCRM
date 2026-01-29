@@ -348,29 +348,43 @@ interface StatsCardProps {
   trendLabel?: string
   icon?: React.ReactNode
   sparklineData?: number[]
+  variant?: 'default' | 'primary' | 'success' | 'warning'
 }
 
-export function StatsCard({ title, value, description, trend, trendLabel, icon, sparklineData }: StatsCardProps) {
+export function StatsCard({ title, value, description, trend, trendLabel, icon, sparklineData, variant = 'default' }: StatsCardProps) {
   const isPositive = trend && trend > 0
 
+  const variantColors = {
+    default: { bg: 'bg-primary/10', text: 'text-primary', gradient: COLORS.blue },
+    primary: { bg: 'bg-blue-500/10', text: 'text-blue-600 dark:text-blue-400', gradient: COLORS.blue },
+    success: { bg: 'bg-emerald-500/10', text: 'text-emerald-600 dark:text-emerald-400', gradient: COLORS.green },
+    warning: { bg: 'bg-amber-500/10', text: 'text-amber-600 dark:text-amber-400', gradient: COLORS.orange },
+  }
+
+  const colors = variantColors[variant]
+
   return (
-    <Card>
+    <Card className="relative overflow-hidden card-shadow hover:card-shadow-md transition-shadow duration-200">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle className="text-sm font-medium text-muted-foreground">
           {title}
         </CardTitle>
         {icon && (
-          <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+          <div className={`h-10 w-10 rounded-xl ${colors.bg} flex items-center justify-center ${colors.text}`}>
             {icon}
           </div>
         )}
       </CardHeader>
       <CardContent>
-        <div className="text-3xl font-bold">{value}</div>
+        <div className="text-3xl font-bold tracking-tight">{value}</div>
         <div className="flex items-center gap-2 mt-1">
           {trend !== undefined && (
-            <span className={`text-xs font-medium ${isPositive ? 'text-green-600' : 'text-red-600'}`}>
-              {isPositive ? '+' : ''}{trend}%
+            <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full ${
+              isPositive 
+                ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' 
+                : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+            }`}>
+              {isPositive ? '↑' : '↓'} {Math.abs(trend)}%
             </span>
           )}
           <p className="text-xs text-muted-foreground">
@@ -382,17 +396,17 @@ export function StatsCard({ title, value, description, trend, trendLabel, icon, 
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={sparklineData.map((v, i) => ({ value: v, index: i }))}>
                 <defs>
-                  <linearGradient id="sparkline" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor={COLORS.blue} stopOpacity={0.3} />
-                    <stop offset="95%" stopColor={COLORS.blue} stopOpacity={0} />
+                  <linearGradient id={`sparkline-${variant}`} x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor={colors.gradient} stopOpacity={0.3} />
+                    <stop offset="95%" stopColor={colors.gradient} stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <Area
                   type="monotone"
                   dataKey="value"
-                  stroke={COLORS.blue}
+                  stroke={colors.gradient}
                   strokeWidth={2}
-                  fill="url(#sparkline)"
+                  fill={`url(#sparkline-${variant})`}
                 />
               </AreaChart>
             </ResponsiveContainer>

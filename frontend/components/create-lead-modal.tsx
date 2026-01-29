@@ -57,7 +57,7 @@ export function CreateLeadModal({
         email: formData.email,
         company: formData.company,
         value: parseInt(formData.value, 10) || 0,
-        status: 'new',
+        status: 'NEW',
         notes: formData.notes,
       })
 

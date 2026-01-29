@@ -12,8 +12,8 @@ const router = Router();
 
 router.use(isAuth);
 
-router.use(requireRole("ADMIN","MANAGER"));
-router.post("/", createTask);
+// OWNER, ADMIN, MANAGER can create/view tasks, SALES can only view their own
+router.post("/", requireRole("OWNER", "ADMIN", "MANAGER"), createTask);
 router.get("/", getTasks);
 router.put("/:id", updateTask);
 router.delete("/:id", deleteTask);

@@ -41,31 +41,93 @@ var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$navi
 ;
 const API_BASE = ("TURBOPACK compile-time value", "http://localhost:3000/api") || 'http://localhost:3000/api';
 const AuthContext = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["createContext"])(undefined);
+// Token refresh interval (14 minutes - before 15 min expiry)
+const TOKEN_REFRESH_INTERVAL = 14 * 60 * 1000;
 function AuthProvider({ children }) {
     const [user, setUser] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(null);
     const [loading, setLoading] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(true);
+    // Access token stored in memory only (not localStorage for security)
     const [accessToken, setAccessToken] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(null);
     const router = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$navigation$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useRouter"])();
+    const refreshIntervalRef = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useRef"])(null);
+    const isRefreshing = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useRef"])(false);
+    // Refresh access token using refresh token (httpOnly cookie)
+    const refreshAccessToken = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useCallback"])(async ()=>{
+        if (isRefreshing.current) return accessToken;
+        isRefreshing.current = true;
+        try {
+            const response = await fetch(`${API_BASE}/auth/refresh-token`, {
+                method: 'POST',
+                credentials: 'include'
+            });
+            if (!response.ok) {
+                // Refresh token invalid/expired - logout user
+                setAccessToken(null);
+                setUser(null);
+                localStorage.removeItem('user');
+                return null;
+            }
+            const data = await response.json();
+            setAccessToken(data.accessToken);
+            return data.accessToken;
+        } catch (error) {
+            console.error('[Auth] Token refresh failed:', error);
+            setAccessToken(null);
+            setUser(null);
+            localStorage.removeItem('user');
+            return null;
+        } finally{
+            isRefreshing.current = false;
+        }
+    }, [
+        accessToken
+    ]);
+    // Setup automatic token refresh
+    const setupTokenRefresh = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useCallback"])(()=>{
+        if (refreshIntervalRef.current) {
+            clearInterval(refreshIntervalRef.current);
+        }
+        // Refresh token periodically before it expires
+        refreshIntervalRef.current = setInterval(async ()=>{
+            if (user) {
+                await refreshAccessToken();
+            }
+        }, TOKEN_REFRESH_INTERVAL);
+    }, [
+        user,
+        refreshAccessToken
+    ]);
     // Check if user is already logged in on mount
     (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useEffect"])(()=>{
         const checkAuth = async ()=>{
             try {
-                const token = localStorage.getItem('accessToken');
                 const storedUser = localStorage.getItem('user');
-                if (token && storedUser) {
-                    setAccessToken(token);
-                    setUser(JSON.parse(storedUser));
+                if (storedUser) {
+                    // Try to refresh token to get new access token
+                    const newToken = await refreshAccessToken();
+                    if (newToken) {
+                        setUser(JSON.parse(storedUser));
+                        setupTokenRefresh();
+                    } else {
+                        // Refresh failed - clear stored user
+                        localStorage.removeItem('user');
+                    }
                 }
             } catch (error) {
-                console.error('[v0] Auth check failed:', error);
-                localStorage.removeItem('accessToken');
+                console.error('[Auth] Auth check failed:', error);
                 localStorage.removeItem('user');
             } finally{
                 setLoading(false);
             }
         };
         checkAuth();
-    }, []);
+        // Cleanup on unmount
+        return ()=>{
+            if (refreshIntervalRef.current) {
+                clearInterval(refreshIntervalRef.current);
+            }
+        };
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
     const login = async (email, password, twoFactorToken)=>{
         try {
             const response = await fetch(`${API_BASE}/auth/login`, {
@@ -93,35 +155,43 @@ function AuthProvider({ children }) {
                 };
             }
             const { accessToken: token, user: userData } = data;
-            localStorage.setItem('accessToken', token);
-            localStorage.setItem('user', JSON.stringify(userData));
+            // Store access token in memory only (not localStorage)
             setAccessToken(token);
+            // Store user info in localStorage for persistence (but not the token)
+            localStorage.setItem('user', JSON.stringify(userData));
             setUser(userData);
+            // Setup automatic token refresh
+            setupTokenRefresh();
             router.push('/dashboard');
             return {};
         } catch (error) {
-            console.error('[v0] Login error:', error);
+            console.error('[Auth] Login error:', error);
             throw error;
         }
     };
     const logout = async ()=>{
         try {
-            const token = localStorage.getItem('accessToken');
-            if (token) {
+            // Clear refresh interval
+            if (refreshIntervalRef.current) {
+                clearInterval(refreshIntervalRef.current);
+                refreshIntervalRef.current = null;
+            }
+            if (accessToken) {
                 await fetch(`${API_BASE}/auth/logout`, {
                     method: 'POST',
                     headers: {
-                        'Authorization': `Bearer ${token}`
+                        'Authorization': `Bearer ${accessToken}`
                     },
                     credentials: 'include'
                 });
             }
         } catch (error) {
-            console.error('[v0] Logout error:', error);
+            console.error('[Auth] Logout error:', error);
         } finally{
-            localStorage.removeItem('accessToken');
-            localStorage.removeItem('user');
+            // Clear in-memory token
             setAccessToken(null);
+            // Clear user from localStorage
+            localStorage.removeItem('user');
             setUser(null);
             router.push('/login');
         }
@@ -130,15 +200,16 @@ function AuthProvider({ children }) {
         value: {
             user,
             loading,
-            isAuthenticated: !!user,
+            isAuthenticated: !!user && !!accessToken,
             login,
             logout,
-            accessToken
+            accessToken,
+            refreshAccessToken
         },
         children: children
     }, void 0, false, {
         fileName: "[project]/contexts/auth-context.tsx",
-        lineNumber: 119,
+        lineNumber: 198,
         columnNumber: 5
     }, this);
 }

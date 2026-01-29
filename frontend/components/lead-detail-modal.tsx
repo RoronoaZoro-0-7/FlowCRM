@@ -31,7 +31,7 @@ interface LeadDetailModalProps {
   onSave?: (lead: Lead) => void
 }
 
-const STATUS_OPTIONS = ['new', 'contacted', 'qualified', 'lost', 'won']
+const STATUS_OPTIONS = ['NEW', 'CONTACTED', 'QUALIFIED', 'PROPOSAL', 'WON', 'LOST']
 
 export function LeadDetailModal({
   lead,

@@ -13,6 +13,7 @@ import notificationRoutes from './routes/notificationRoutes';
 import dealRoutes from './routes/dealRoutes';
 import twoFactorRoutes from './routes/twoFactorRoutes';
 import dashboardRoutes from './routes/dashboardRoutes';
+import organizationRoutes from './routes/organizationRoutes';
 import { rateLimitApi } from './middleware/rateLimiter';
 import { REDIS_ENABLED, getRedis } from './config/redis';
 import { startWorkers } from './queues/workers';
@@ -115,6 +116,7 @@ app.use("/api/notifications", notificationRoutes);
 app.use("/api/deals", dealRoutes);
 app.use("/api/2fa", twoFactorRoutes);
 app.use("/api/dashboard", dashboardRoutes);
+app.use("/api/organizations", organizationRoutes);
 
 httpServer.listen(3000, async () => {
     console.log('🚀 Server is running on port 3000');

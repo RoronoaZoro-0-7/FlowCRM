@@ -112,7 +112,7 @@ export const rateLimitPasswordReset = async (req: Request, res: Response, next: 
 // General API rate limiter middleware
 export const rateLimitApi = async (req: Request, res: Response, next: NextFunction) => {
     // Use user ID if authenticated, otherwise use IP
-    const key = req.user?.userId || getClientIp(req);
+    const key = (req as any).user?.userId || getClientIp(req);
     
     try {
         const rateLimiterRes = await apiLimiter.consume(key);
@@ -135,7 +135,7 @@ export const rateLimitApi = async (req: Request, res: Response, next: NextFuncti
 
 // Strict rate limiter for sensitive endpoints
 export const rateLimitStrict = async (req: Request, res: Response, next: NextFunction) => {
-    const key = req.user?.userId || getClientIp(req);
+    const key = (req as any).user?.userId || getClientIp(req);
     
     try {
         await strictApiLimiter.consume(key);

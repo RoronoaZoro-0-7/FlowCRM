@@ -6,11 +6,24 @@ export interface ApiResponse<T> {
   message?: string
 }
 
+// Token getter/setter for api-service to use (set by auth context)
+let getAccessToken: () => string | null = () => null
+let refreshToken: () => Promise<string | null> = async () => null
+
+export function setTokenHandlers(
+  getter: () => string | null,
+  refresher: () => Promise<string | null>
+) {
+  getAccessToken = getter
+  refreshToken = refresher
+}
+
 export async function makeRequest<T>(
   endpoint: string,
-  options: RequestInit = {}
+  options: RequestInit = {},
+  retry = true
 ): Promise<T> {
-  const token = localStorage.getItem('accessToken')
+  const token = getAccessToken()
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...(options.headers as Record<string, string>),
@@ -25,6 +38,17 @@ export async function makeRequest<T>(
     headers,
     credentials: 'include',
   })
+
+  // Handle 401 - try to refresh token and retry once
+  if (response.status === 401 && retry) {
+    const newToken = await refreshToken()
+    if (newToken) {
+      // Retry the request with new token
+      return makeRequest(endpoint, options, false)
+    }
+    // Refresh failed - throw error
+    throw new Error('Session expired. Please login again.')
+  }
 
   if (!response.ok) {
     const error = await response.json()
@@ -161,4 +185,30 @@ export async function deleteUser(id: string) {
   return makeRequest(`/users/${id}`, {
     method: 'DELETE',
   })
+}
+
+// Organizations API (OWNER only)
+export async function getOrganizations() {
+  return makeRequest('/organizations')
+}
+
+export async function getOrganizationById(id: string) {
+  return makeRequest(`/organizations/${id}`)
+}
+
+// Dashboard API
+export async function getDashboardStats() {
+  return makeRequest('/dashboard/stats')
+}
+
+export async function getWeeklyStats() {
+  return makeRequest('/dashboard/weekly')
+}
+
+export async function getPipelineStats() {
+  return makeRequest('/dashboard/pipeline')
+}
+
+export async function getLeadStatusStats() {
+  return makeRequest('/dashboard/lead-status')
 }

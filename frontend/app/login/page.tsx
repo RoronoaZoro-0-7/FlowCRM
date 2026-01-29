@@ -1,6 +1,6 @@
 'use client'
 
-import React from "react"
+import React, { useEffect } from "react"
 
 import { useState } from 'react'
 import { useAuth } from '@/contexts/auth-context'
@@ -19,12 +19,27 @@ export default function LoginPage() {
   const [twoFactorToken, setTwoFactorToken] = useState('')
   const [requires2FA, setRequires2FA] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
-  const { login, isAuthenticated } = useAuth()
+  const { login, isAuthenticated, loading } = useAuth()
   const router = useRouter()
 
-  // Redirect if already logged in
+  // Redirect if already logged in - use useEffect to avoid setState during render
+  useEffect(() => {
+    if (!loading && isAuthenticated) {
+      router.push('/dashboard')
+    }
+  }, [isAuthenticated, loading, router])
+
+  // Show loading while checking auth
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    )
+  }
+
+  // Don't render login form if authenticated
   if (isAuthenticated) {
-    router.push('/dashboard')
     return null
   }
 

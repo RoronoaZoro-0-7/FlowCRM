@@ -15,8 +15,7 @@ import {
   StatsCard,
 } from '@/components/dashboard-charts'
 import { Users, TrendingUp, CheckSquare, Target, DollarSign, BarChart3 } from 'lucide-react'
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api'
+import { getDashboardStats, getWeeklyStats, getPipelineStats, makeRequest } from '@/lib/api-service'
 
 interface DashboardStats {
   totalLeads: number
@@ -89,35 +88,31 @@ export default function DashboardPage() {
 
   useEffect(() => {
     const fetchAllData = async () => {
-      const token = localStorage.getItem('accessToken')
-      const headers = { Authorization: `Bearer ${token}` }
-
       try {
-        // Fetch all dashboard data in parallel
-        const [statsRes, weeklyRes, pipelineRes, teamRes] = await Promise.allSettled([
-          fetch(`${API_URL}/dashboard/stats`, { headers }),
-          fetch(`${API_URL}/dashboard/weekly`, { headers }),
-          fetch(`${API_URL}/dashboard/pipeline`, { headers }),
-          fetch(`${API_URL}/dashboard/team-performance`, { headers }),
+        // Fetch all dashboard data in parallel using api-service
+        const [statsData, weeklyData, pipelineDataRes, teamDataRes] = await Promise.allSettled([
+          getDashboardStats(),
+          getWeeklyStats(),
+          getPipelineStats(),
+          makeRequest('/dashboard/team-performance'),
         ])
 
         // Process stats
-        if (statsRes.status === 'fulfilled' && statsRes.value.ok) {
-          const data = await statsRes.value.json()
-          setStats(data)
+        if (statsData.status === 'fulfilled') {
+          setStats(statsData.value as DashboardStats)
         }
 
         // Process weekly data
-        if (weeklyRes.status === 'fulfilled' && weeklyRes.value.ok) {
-          const data: WeeklyData = await weeklyRes.value.json()
+        if (weeklyData.status === 'fulfilled') {
+          const data = weeklyData.value as WeeklyData
           if (data.leadsChart) setLeadsChartData(data.leadsChart)
           if (data.tasksChart) setTasksChartData(data.tasksChart)
           if (data.revenueChart) setRevenueChartData(data.revenueChart)
         }
 
         // Process pipeline data
-        if (pipelineRes.status === 'fulfilled' && pipelineRes.value.ok) {
-          const data: PipelineData[] = await pipelineRes.value.json()
+        if (pipelineDataRes.status === 'fulfilled') {
+          const data = pipelineDataRes.value as PipelineData[]
           const formattedPipeline = data.map(p => ({
             name: p.stage.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()),
             value: p.value,
@@ -127,8 +122,8 @@ export default function DashboardPage() {
         }
 
         // Process team data
-        if (teamRes.status === 'fulfilled' && teamRes.value.ok) {
-          const data: TeamData[] = await teamRes.value.json()
+        if (teamDataRes.status === 'fulfilled') {
+          const data = teamDataRes.value as TeamData[]
           setTeamData(data)
         }
       } catch (error) {
@@ -176,6 +171,14 @@ export default function DashboardPage() {
 
     return (
       <div className="space-y-8">
+        {/* Page Header */}
+        <div className="flex flex-col gap-1">
+          <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
+          <p className="text-muted-foreground">
+            Welcome back, {user?.name}! Here's what's happening today.
+          </p>
+        </div>
+
         {/* Stats Cards with Sparklines */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <StatsCard
@@ -184,8 +187,9 @@ export default function DashboardPage() {
             description="Active leads in pipeline"
             trend={12}
             trendLabel="vs last month"
-            icon={<Users className="h-4 w-4" />}
+            icon={<Users className="h-5 w-5" />}
             sparklineData={[20, 25, 18, 32, 28, 35, 42]}
+            variant="primary"
           />
           <StatsCard
             title="Pipeline Value"
@@ -193,8 +197,9 @@ export default function DashboardPage() {
             description="Total deal value"
             trend={8}
             trendLabel="vs last month"
-            icon={<DollarSign className="h-4 w-4" />}
+            icon={<DollarSign className="h-5 w-5" />}
             sparklineData={[400, 420, 450, 480, 510, 520, 542]}
+            variant="success"
           />
           <StatsCard
             title="Overdue Tasks"
@@ -202,7 +207,8 @@ export default function DashboardPage() {
             description="Require attention"
             trend={-15}
             trendLabel="vs last week"
-            icon={<CheckSquare className="h-4 w-4" />}
+            icon={<CheckSquare className="h-5 w-5" />}
+            variant="warning"
           />
           <StatsCard
             title="Conversion Rate"
@@ -210,8 +216,9 @@ export default function DashboardPage() {
             description="Lead to deal conversion"
             trend={5}
             trendLabel="vs last month"
-            icon={<Target className="h-4 w-4" />}
+            icon={<Target className="h-5 w-5" />}
             sparklineData={[18, 19, 21, 20, 22, 23, 24]}
+            variant="default"
           />
         </div>
 

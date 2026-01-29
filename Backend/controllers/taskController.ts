@@ -77,14 +77,25 @@ const getTasks = TryCatch(async (req: Request, res: Response) => {
 
   let tasks;
 
+  const includeRelations = {
+    assignedTo: {
+      select: { id: true, name: true },
+    },
+    createdBy: {
+      select: { id: true, name: true },
+    },
+  };
+
   if (user.role === "SALES") {
     tasks = await prisma.task.findMany({
       where: { assignedToId: user.id },
+      include: includeRelations,
       orderBy: { createdAt: "desc" },
     });
   } else {
     tasks = await prisma.task.findMany({
       where: { orgId: user.orgId },
+      include: includeRelations,
       orderBy: { createdAt: "desc" },
     });
   }
