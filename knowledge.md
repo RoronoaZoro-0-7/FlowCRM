@@ -1921,6 +1921,440 @@ FlowCRM/
 
 ---
 
+## 🎯 Event-Driven Architecture (EventEmitter)
+
+### Overview
+
+FlowCRM uses an event-driven architecture that decouples actions from their side effects. When something happens (lead created, task assigned, deal won), an event is emitted that triggers notifications, cache invalidation, audit logging, and real-time broadcasts.
+
+### Event Types (46 Total)
+
+#### Lead Events
+| Event | Trigger | Creates Notification | Audit Logged |
+|-------|---------|---------------------|--------------|
+| `lead:created` | New lead added | ✅ (to assignee) | ✅ |
+| `lead:updated` | Lead modified | ❌ | ✅ |
+| `lead:deleted` | Lead removed | ❌ | ✅ |
+| `lead:assigned` | Lead reassigned | ✅ (to new assignee) | ✅ |
+| `lead:status_changed` | Status update | ❌ | ✅ |
+| `lead:converted` | Lead → Deal | ✅ | ✅ |
+
+#### Deal Events
+| Event | Trigger | Creates Notification | Audit Logged |
+|-------|---------|---------------------|--------------|
+| `deal:created` | New deal added | ✅ (to assignee) | ✅ |
+| `deal:updated` | Deal modified | ✅ | ✅ |
+| `deal:deleted` | Deal removed | ❌ | ✅ |
+| `deal:stage_changed` | Pipeline movement | ✅ | ✅ |
+| `deal:assigned` | Deal reassigned | ✅ (to new assignee) | ✅ |
+| `deal:won` | Deal closed won | ✅ (org broadcast) | ✅ |
+| `deal:lost` | Deal closed lost | ❌ | ✅ |
+
+#### Task Events
+| Event | Trigger | Creates Notification | Audit Logged |
+|-------|---------|---------------------|--------------|
+| `task:created` | New task added | ✅ (to assignee) | ✅ |
+| `task:updated` | Task modified | ❌ | ✅ |
+| `task:deleted` | Task removed | ❌ | ✅ |
+| `task:assigned` | Task reassigned | ✅ (to new assignee) | ✅ |
+| `task:completed` | Task done | ✅ (to creator) | ✅ |
+| `task:overdue` | Past due date | ✅ (to assignee) | ❌ |
+| `task:due_soon` | Due within 24h | ✅ (to assignee) | ❌ |
+
+#### User Events
+| Event | Trigger | Creates Notification | Audit Logged |
+|-------|---------|---------------------|--------------|
+| `user:created` | New user added | ✅ (welcome) | ✅ |
+| `user:updated` | Profile changed | ❌ | ✅ |
+| `user:deleted` | User removed | ❌ | ✅ |
+| `user:role_changed` | Role updated | ✅ | ✅ |
+| `user:password_changed` | Password updated | ❌ | ✅ |
+| `user:2fa_enabled` | 2FA activated | ❌ | ✅ |
+| `user:2fa_disabled` | 2FA deactivated | ❌ | ✅ |
+| `user:login` | User logged in | ❌ | ✅ |
+
+### Event Emission Flow
+
+```typescript
+// services/eventEmitter.ts
+
+export const emitEvent = async (
+    app: Application,
+    eventType: string,
+    payload: Record<string, any>,
+    orgId: string,
+    userId?: string
+) => {
+    // 1. Store event in database via queue
+    await addEventJob({ type: eventType, payload, orgId, userId });
+    
+    // 2. Create audit log for important events
+    if (shouldAudit(eventType) && userId) {
+        await addAuditJob({
+            userId,
+            orgId,
+            action: eventType,
+            entityType: getEntityType(eventType),
+            entityId: payload.id,
+            details: payload,
+        });
+    }
+    
+    // 3. Create notification if applicable
+    const notificationType = getNotificationType(eventType);
+    if (notificationType && payload.assignedToId) {
+        await addNotificationJob({
+            userId: payload.assignedToId,
+            orgId,
+            type: notificationType,
+            message: generateNotificationMessage(eventType, payload),
+            link: generateLink(eventType, payload),
+        });
+    }
+    
+    // 4. Broadcast via Socket.IO
+    emitToOrg(app, orgId, eventType, payload);
+    
+    // 5. Invalidate caches
+    await handleCacheInvalidation(eventType, orgId);
+};
+```
+
+### Cache Invalidation Rules
+
+```typescript
+const handleCacheInvalidation = async (eventType: string, orgId: string) => {
+    // Dashboard stats invalidation
+    const dashboardInvalidatingEvents = [
+        'lead:created', 'lead:deleted', 'lead:converted',
+        'deal:created', 'deal:deleted', 'deal:won', 'deal:lost',
+        'task:created', 'task:deleted', 'task:completed',
+    ];
+    
+    if (dashboardInvalidatingEvents.includes(eventType)) {
+        await invalidateDashboardCache(orgId);
+    }
+};
+```
+
+---
+
+## 📊 Dashboard API Endpoints
+
+### Overview
+
+The dashboard provides comprehensive analytics and metrics for sales performance tracking.
+
+### Endpoints
+
+| Endpoint | Method | Auth | Description |
+|----------|--------|------|-------------|
+| `/api/dashboard/stats` | GET | All | Main dashboard statistics |
+| `/api/dashboard/weekly` | GET | All | Weekly performance charts |
+| `/api/dashboard/pipeline` | GET | All | Deal pipeline by stage |
+| `/api/dashboard/lead-status` | GET | All | Lead distribution by status |
+| `/api/dashboard/lead-sources` | GET | All | Lead distribution by source |
+| `/api/dashboard/task-status` | GET | All | Task distribution by status |
+| `/api/dashboard/overdue-tasks` | GET | All | List of overdue tasks |
+| `/api/dashboard/team-performance` | GET | Admin+ | Team metrics (sales by user) |
+| `/api/dashboard/activity` | GET | All | Recent activity feed |
+| `/api/dashboard/admin/cleanup-tokens` | POST | Admin | Trigger token cleanup |
+| `/api/dashboard/admin/token-stats` | GET | Admin | Token statistics |
+
+### Dashboard Stats Response
+
+```typescript
+// GET /api/dashboard/stats
+{
+    totalLeads: 156,
+    totalDeals: 42,
+    totalTasks: 89,
+    openTasks: 34,
+    leadsThisWeek: 23,
+    dealsWonThisMonth: 8,
+    dealValueThisMonth: 125000,
+    conversionRate: 27,  // percentage
+    pipelineValue: 542000,
+}
+```
+
+### Pipeline Stats Response
+
+```typescript
+// GET /api/dashboard/pipeline
+[
+    { stage: "QUALIFICATION", count: 15, value: 120000 },
+    { stage: "DISCOVERY", count: 8, value: 95000 },
+    { stage: "PROPOSAL", count: 6, value: 180000 },
+    { stage: "NEGOTIATION", count: 4, value: 147000 },
+    { stage: "CLOSED_WON", count: 8, value: 0 },
+    { stage: "CLOSED_LOST", count: 3, value: 0 },
+]
+```
+
+---
+
+## 👥 Lead Management
+
+### Lead Statuses
+
+| Status | Description | Color |
+|--------|-------------|-------|
+| `NEW` | Fresh lead, not contacted | Blue |
+| `CONTACTED` | Initial contact made | Yellow |
+| `QUALIFIED` | Meets criteria, has budget | Purple |
+| `PROPOSAL` | Proposal sent | Orange |
+| `WON` | Converted to deal | Green |
+| `LOST` | Disqualified or lost | Red |
+
+### Lead Sources
+
+- Website
+- Referral
+- LinkedIn
+- Cold Call
+- Trade Show
+- Email Campaign
+- Partner
+
+### Lead API Endpoints
+
+| Endpoint | Method | Auth | Description |
+|----------|--------|------|-------------|
+| `/api/leads` | GET | All | List leads (SALES sees only owned) |
+| `/api/leads` | POST | All | Create new lead |
+| `/api/leads/:id` | GET | All | Get lead details with activities |
+| `/api/leads/:id` | PUT | All | Update lead |
+| `/api/leads/:id` | DELETE | Admin+ | Delete lead |
+
+---
+
+## 💼 Deal Management
+
+### Deal Stages (Pipeline)
+
+| Stage | Description | Probability |
+|-------|-------------|-------------|
+| `QUALIFICATION` | Initial assessment | 10% |
+| `DISCOVERY` | Understanding needs | 25% |
+| `PROPOSAL` | Proposal submitted | 50% |
+| `NEGOTIATION` | Terms discussion | 75% |
+| `CLOSED_WON` | Deal won! | 100% |
+| `CLOSED_LOST` | Deal lost | 0% |
+
+### Deal API Endpoints
+
+| Endpoint | Method | Auth | Description |
+|----------|--------|------|-------------|
+| `/api/deals` | GET | All | List all deals |
+| `/api/deals` | POST | All | Create new deal |
+| `/api/deals/:id` | GET | All | Get deal with lead & tasks |
+| `/api/deals/:id` | PUT | All | Update deal (stage changes tracked) |
+| `/api/deals/:id` | DELETE | Admin+ | Delete deal |
+
+---
+
+## ✅ Task Management
+
+### Task Statuses
+
+| Status | Description |
+|--------|-------------|
+| `TODO` | Not started |
+| `IN_PROGRESS` | Currently working |
+| `DONE` | Completed |
+
+### Task Priorities
+
+| Priority | Description | Color |
+|----------|-------------|-------|
+| `LOW` | Can wait | Gray |
+| `MEDIUM` | Normal priority | Yellow |
+| `HIGH` | Urgent | Red |
+
+### Task API Endpoints
+
+| Endpoint | Method | Auth | Description |
+|----------|--------|------|-------------|
+| `/api/tasks` | GET | All | List tasks (SALES sees only assigned) |
+| `/api/tasks` | POST | Admin/Manager | Create task |
+| `/api/tasks/:id` | PUT | All | Update task |
+| `/api/tasks/:id` | DELETE | Admin/Manager | Delete task |
+
+---
+
+## 📝 Activity Tracking
+
+### Activity Types
+
+| Type | Description | Icon |
+|------|-------------|------|
+| `NOTE` | General note/comment | 📝 |
+| `CALL` | Phone call logged | 📞 |
+| `EMAIL` | Email sent/received | 📧 |
+| `MEETING` | Meeting scheduled/completed | 📅 |
+
+---
+
+## 🔔 Notification System
+
+### Notification Types
+
+| Type | Trigger | Message Template |
+|------|---------|------------------|
+| `TASK_ASSIGNED` | Task assigned to user | "You've been assigned a new task: {title}" |
+| `USER_ADDED` | New user added to org | "Welcome to {orgName}!" |
+| `LEAD_ASSIGNED` | Lead assigned to user | "You've been assigned lead: {name}" |
+| `DEAL_UPDATED` | Deal stage changed | "Deal {title} moved to {stage}" |
+| `SYSTEM` | System announcements | Various |
+
+### Notification API Endpoints
+
+| Endpoint | Method | Auth | Description |
+|----------|--------|------|-------------|
+| `/api/notifications` | GET | All | Get user's notifications |
+| `/api/notifications/:id/read` | PUT | All | Mark as read |
+| `/api/notifications/read-all` | PUT | All | Mark all as read |
+
+---
+
+## 👤 User Management
+
+### User Roles & Hierarchy
+
+```
+OWNER (4) ─────┬───▶ Full system access, can manage all orgs
+ADMIN (3) ────┼───▶ Organization admin, can add MANAGER/SALES
+MANAGER (2) ──┼───▶ Team lead, can assign tasks to SALES
+SALES (1) ────┴───▶ Individual contributor, own leads only
+```
+
+### User API Endpoints
+
+| Endpoint | Method | Auth | Description |
+|----------|--------|------|-------------|
+| `/api/users` | GET | Admin+ | List org users |
+| `/api/users` | POST | Admin+ | Add new employee |
+| `/api/users/:id` | GET | All | Get user profile |
+| `/api/users/:id` | PUT | Admin+ | Update user |
+| `/api/users/:id` | DELETE | Admin+ | Remove user |
+
+---
+
+## 📈 Audit Logging
+
+### Audited Actions
+
+| Action | Entity | Details Logged |
+|--------|--------|----------------|
+| `user:login` | User | IP, User Agent |
+| `user:logout` | User | Session duration |
+| `user:created` | User | New user details |
+| `user:role_changed` | User | Old role → New role |
+| `user:password_changed` | User | (no details) |
+| `user:2fa_enabled` | User | - |
+| `user:2fa_disabled` | User | - |
+| `lead:created` | Lead | Lead details |
+| `lead:deleted` | Lead | Lead details |
+| `deal:won` | Deal | Deal value |
+| `deal:lost` | Deal | Deal value, reason |
+
+---
+
+## 🌱 Seed Data
+
+### Default Credentials
+
+| Organization | Email | Password | Role |
+|--------------|-------|----------|------|
+| TechCorp Solutions | owner@techcorp.com | password | OWNER |
+| TechCorp Solutions | admin@techcorp.com | password | ADMIN |
+| TechCorp Solutions | manager@techcorp.com | password | MANAGER |
+| TechCorp Solutions | sales1@techcorp.com | password | SALES |
+| StartupHub Inc | owner@startuphub.com | password | OWNER |
+| Demo Company | admin@example.com | password | ADMIN |
+
+### Running the Seed
+
+```bash
+cd Backend
+npx prisma db seed
+```
+
+---
+
+## 🖥️ Frontend Components
+
+### Dashboard Charts
+
+| Component | Type | Data Source |
+|-----------|------|-------------|
+| `LeadsChart` | Bar Chart | `/dashboard/weekly` |
+| `RevenueChart` | Area Chart | `/dashboard/weekly` |
+| `DealsPipelineChart` | Pie Chart | `/dashboard/pipeline` |
+| `TasksChart` | Line Chart | `/dashboard/weekly` |
+| `TeamPerformanceChart` | Horizontal Bar | `/dashboard/team-performance` |
+| `StatsCard` | KPI Card | `/dashboard/stats` |
+
+### StatsCard Variants
+
+```typescript
+interface StatsCardProps {
+    title: string;
+    value: string | number;
+    description: string;
+    trend?: number;        // +/- percentage
+    icon?: ReactNode;
+    variant?: 'default' | 'primary' | 'success' | 'warning';
+}
+```
+
+### Table Components
+
+- **LeadsTable** - Search, filter by status, real-time updates, RBAC actions
+- **TasksTable** - Search, filter by status/priority, inline status change
+
+### Modal Components
+
+- `CreateLeadModal` - New lead form
+- `CreateTaskModal` - New task form with user selection
+- `CreateDealModal` - New deal form with lead association
+
+---
+
+## 🔄 API Service (Frontend)
+
+### Token Handling
+
+```typescript
+// Auto-retry on 401
+if (response.status === 401 && retry) {
+    const newToken = await refreshToken();
+    if (newToken) {
+        return makeRequest(endpoint, options, false);
+    }
+    throw new Error('Session expired');
+}
+```
+
+---
+
+## 🎨 UI/UX Features
+
+### Theme System
+- Light mode with soft blue accents
+- Dark mode with purple accents
+- System preference detection
+- Persistent theme storage
+
+### Responsive Design
+- Desktop sidebar navigation
+- Mobile hamburger menu
+- Responsive tables (horizontal scroll on mobile)
+- Touch-friendly controls
+
+---
+
 ## 📝 License
 
 This project is for educational and demonstration purposes.
