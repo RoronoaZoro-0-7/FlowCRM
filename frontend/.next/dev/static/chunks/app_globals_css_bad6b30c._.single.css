@@ -1536,8 +1536,8 @@
     max-width: 75%;
   }
 
-  .max-w-\[80\%\] {
-    max-width: 80%;
+  .max-w-\[90\%\] {
+    max-width: 90%;
   }
 
   .max-w-\[calc\(100\%-2rem\)\] {
@@ -1554,6 +1554,10 @@
 
   .max-w-md {
     max-width: var(--container-md);
+  }
+
+  .max-w-none {
+    max-width: none;
   }
 
   .max-w-sm {
@@ -5287,6 +5291,12 @@
   }
 
   @media (min-width: 40rem) {
+    .sm\:max-w-2xl {
+      max-width: var(--container-2xl);
+    }
+  }
+
+  @media (min-width: 40rem) {
     .sm\:max-w-\[500px\] {
       max-width: 500px;
     }
@@ -6093,6 +6103,21 @@
     width: calc(var(--spacing) * 5);
   }
 
+  .\[\&_h1\]\:text-lg h1 {
+    font-size: var(--text-lg);
+    line-height: var(--tw-leading, var(--text-lg--line-height));
+  }
+
+  .\[\&_h2\]\:text-base h2 {
+    font-size: var(--text-base);
+    line-height: var(--tw-leading, var(--text-base--line-height));
+  }
+
+  .\[\&_h3\]\:text-sm h3 {
+    font-size: var(--text-sm);
+    line-height: var(--tw-leading, var(--text-sm--line-height));
+  }
+
   .\[\&_img\]\:size-full img {
     width: 100%;
     height: 100%;
@@ -6100,6 +6125,18 @@
 
   .\[\&_img\]\:object-cover img {
     object-fit: cover;
+  }
+
+  .\[\&_li\]\:my-0\.5 li {
+    margin-block: calc(var(--spacing) * .5);
+  }
+
+  .\[\&_ol\]\:my-1 ol {
+    margin-block: calc(var(--spacing) * 1);
+  }
+
+  .\[\&_p\]\:my-1 p {
+    margin-block: calc(var(--spacing) * 1);
   }
 
   .\[\&_p\]\:leading-relaxed p {
@@ -6134,6 +6171,53 @@
     color: var(--muted-foreground);
   }
 
+  .\[\&_table\]\:w-full table {
+    width: 100%;
+  }
+
+  .\[\&_table\]\:text-xs table {
+    font-size: var(--text-xs);
+    line-height: var(--tw-leading, var(--text-xs--line-height));
+  }
+
+  .\[\&_td\]\:border td {
+    border-style: var(--tw-border-style);
+    border-width: 1px;
+  }
+
+  .\[\&_td\]\:border-border td {
+    border-color: var(--border);
+  }
+
+  .\[\&_td\]\:px-2 td {
+    padding-inline: calc(var(--spacing) * 2);
+  }
+
+  .\[\&_td\]\:py-1 td {
+    padding-block: calc(var(--spacing) * 1);
+  }
+
+  .\[\&_th\]\:border th {
+    border-style: var(--tw-border-style);
+    border-width: 1px;
+  }
+
+  .\[\&_th\]\:border-border th {
+    border-color: var(--border);
+  }
+
+  .\[\&_th\]\:bg-muted th {
+    background-color: var(--muted);
+  }
+
+  .\[\&_th\]\:px-2 th {
+    padding-inline: calc(var(--spacing) * 2);
+  }
+
+  .\[\&_th\]\:py-1 th {
+    padding-block: calc(var(--spacing) * 1);
+  }
+
   .\[\&_tr\]\:border-b tr {
     border-bottom-style: var(--tw-border-style);
     border-bottom-width: 1px;
@@ -6142,6 +6226,10 @@
   .\[\&_tr\:last-child\]\:border-0 tr:last-child {
     border-style: var(--tw-border-style);
     border-width: 0;
+  }
+
+  .\[\&_ul\]\:my-1 ul {
+    margin-block: calc(var(--spacing) * 1);
   }
 
   .\[\&\+\[data-slot\=item-content\]\]\:flex-none + [data-slot="item-content"] {
