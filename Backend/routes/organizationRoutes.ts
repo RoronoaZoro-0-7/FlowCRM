@@ -157,4 +157,92 @@ router.get('/:id', TryCatch(async (req: Request, res: Response) => {
     return res.json(organization);
 }));
 
+/**
+ * Create a new organization (OWNER only)
+ */
+router.post('/', TryCatch(async (req: Request, res: Response) => {
+    const { name, adminEmail, adminName, adminPassword, currency } = req.body;
+
+    if (!name || !adminEmail || !adminName || !adminPassword) {
+        return res.status(400).json({ 
+            message: 'Name, admin email, admin name, and admin password are required' 
+        });
+    }
+
+    // Check if email already exists
+    const existingUser = await prisma.user.findUnique({
+        where: { email: adminEmail },
+    });
+
+    if (existingUser) {
+        return res.status(400).json({ message: 'A user with this email already exists' });
+    }
+
+    // Hash the password
+    const bcrypt = require('bcrypt');
+    const hashedPassword = await bcrypt.hash(adminPassword, 10);
+
+    // Create organization with an admin user
+    const organization = await prisma.organization.create({
+        data: {
+            name,
+            currency: currency || 'USD',
+            users: {
+                create: {
+                    name: adminName,
+                    email: adminEmail,
+                    password: hashedPassword,
+                    role: 'ADMIN',
+                },
+            },
+        },
+        include: {
+            _count: {
+                select: {
+                    users: true,
+                    leads: true,
+                    deals: true,
+                    tasks: true,
+                },
+            },
+            users: {
+                select: {
+                    id: true,
+                    name: true,
+                    email: true,
+                    role: true,
+                },
+            },
+        },
+    });
+
+    return res.status(201).json({ 
+        organization, 
+        message: 'Organization created successfully' 
+    });
+}));
+
+/**
+ * Delete an organization (OWNER only)
+ */
+router.delete('/:id', TryCatch(async (req: Request, res: Response) => {
+    const id = req.params.id as string;
+
+    // Check if organization exists
+    const organization = await prisma.organization.findUnique({
+        where: { id },
+    });
+
+    if (!organization) {
+        return res.status(404).json({ message: 'Organization not found' });
+    }
+
+    // Delete organization (cascades to all related data due to Prisma relations)
+    await prisma.organization.delete({
+        where: { id },
+    });
+
+    return res.json({ message: 'Organization deleted successfully' });
+}));
+
 export default router;

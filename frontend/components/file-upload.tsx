@@ -31,7 +31,7 @@ interface Attachment {
 }
 
 interface FileUploadProps {
-  entityType: 'lead' | 'deal' | 'task'
+  entityType: 'deal' | 'task' | 'organization'
   entityId: string
   onUploadComplete?: () => void
 }
@@ -270,7 +270,7 @@ export function FileUpload({ entityType, entityId, onUploadComplete }: FileUploa
 
 // Export AttachmentList as a standalone component for use in other contexts
 interface AttachmentListProps {
-  entityType: 'lead' | 'deal' | 'task'
+  entityType: 'deal' | 'task' | 'organization'
   entityId: string
 }
 

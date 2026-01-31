@@ -89,6 +89,7 @@ model Organization {
   customFields    CustomField[]
   chatRooms       ChatRoom[]
   dashboardWidgets DashboardWidget[]
+  attachments     Attachment[]  // Organization agreements
   
   @@map("organizations")
 }
@@ -169,7 +170,6 @@ model Lead {
   activities  Activity[]
   tasks       Task[]
   deals       Deal[]
-  attachments Attachment[]
   mentions    Mention[]
   callLogs    CallLog[]
 
@@ -340,7 +340,7 @@ model RefreshToken {
 
 // ============== NEW MODELS FOR FEATURES ==============
 
-// File Attachments (Cloudinary)
+// File Attachments (Cloudinary) - For Deals, Tasks, and Organization Agreements
 model Attachment {
   id        String   @id @default(uuid())
   filename  String
@@ -349,15 +349,16 @@ model Attachment {
   mimeType  String
   size      Int      // File size in bytes
   
-  // Polymorphic relations
-  leadId    String?
-  lead      Lead?    @relation(fields: [leadId], references: [id], onDelete: Cascade)
-  
+  // Polymorphic relations - Deals and Tasks only
   dealId    String?
   deal      Deal?    @relation(fields: [dealId], references: [id], onDelete: Cascade)
   
   taskId    String?
   task      Task?    @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  
+  // Organization agreements (OWNER only)
+  orgId     String?
+  org       Organization? @relation(fields: [orgId], references: [id], onDelete: Cascade)
   
   uploadedById String
   uploadedBy   User   @relation(fields: [uploadedById], references: [id])

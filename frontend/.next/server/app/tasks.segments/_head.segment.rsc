@@ -1,8 +1,8 @@
 1:"$Sreact.fragment"
-2:I[97367,["/_next/static/chunks/ff1a16fafef87110.js","/_next/static/chunks/af4ba0a20ee01c11.js"],"ViewportBoundary"]
-4:I[97367,["/_next/static/chunks/ff1a16fafef87110.js","/_next/static/chunks/af4ba0a20ee01c11.js"],"MetadataBoundary"]
+2:I[97367,["/_next/static/chunks/ff1a16fafef87110.js","/_next/static/chunks/0d3ffad03d060d4f.js"],"ViewportBoundary"]
+4:I[97367,["/_next/static/chunks/ff1a16fafef87110.js","/_next/static/chunks/0d3ffad03d060d4f.js"],"MetadataBoundary"]
 5:"$Sreact.suspense"
-7:I[27201,["/_next/static/chunks/ff1a16fafef87110.js","/_next/static/chunks/af4ba0a20ee01c11.js"],"IconMark"]
-0:{"buildId":"ujP9WOeAw_kq3irh4T2Up","rsc":["$","$1","h",{"children":[null,["$","$L2",null,{"children":"$@3"}],["$","div",null,{"hidden":true,"children":["$","$L4",null,{"children":["$","$5",null,{"name":"Next.Metadata","children":"$@6"}]}]}],["$","meta",null,{"name":"next-size-adjust","content":""}]]}],"loading":null,"isPartial":false}
+7:I[27201,["/_next/static/chunks/ff1a16fafef87110.js","/_next/static/chunks/0d3ffad03d060d4f.js"],"IconMark"]
+0:{"buildId":"q6cYr6Mflh4-mFJRgofSP","rsc":["$","$1","h",{"children":[null,["$","$L2",null,{"children":"$@3"}],["$","div",null,{"hidden":true,"children":["$","$L4",null,{"children":["$","$5",null,{"name":"Next.Metadata","children":"$@6"}]}]}],["$","meta",null,{"name":"next-size-adjust","content":""}]]}],"loading":null,"isPartial":false}
 3:[["$","meta","0",{"charSet":"utf-8"}],["$","meta","1",{"name":"viewport","content":"width=device-width, initial-scale=1"}]]
-6:[["$","title","0",{"children":"FlowCRM - Sales CRM Dashboard"}],["$","meta","1",{"name":"description","content":"Enterprise CRM platform for managing leads, deals, and teams"}],["$","meta","2",{"name":"generator","content":"v0.app"}],["$","link","3",{"rel":"icon","href":"/icon-light-32x32.png","media":"(prefers-color-scheme: light)"}],["$","link","4",{"rel":"icon","href":"/icon-dark-32x32.png","media":"(prefers-color-scheme: dark)"}],["$","link","5",{"rel":"icon","href":"/icon.svg","type":"image/svg+xml"}],["$","link","6",{"rel":"apple-touch-icon","href":"/apple-icon.png"}],["$","$L7","7",{}]]
+6:[["$","title","0",{"children":"FlowCRM - Sales CRM Dashboard"}],["$","meta","1",{"name":"description","content":"Enterprise CRM platform for managing leads, deals, and teams"}],["$","meta","2",{"name":"generator","content":"v0.app"}],["$","link","3",{"rel":"icon","href":"/pravarit1.png","type":"image/png"}],["$","link","4",{"rel":"apple-touch-icon","href":"/pravarit1.png"}],["$","$L7","5",{}]]

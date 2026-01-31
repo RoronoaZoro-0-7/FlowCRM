@@ -201,6 +201,25 @@ export async function getOrganizationById(id: string) {
   return makeRequest(`/organizations/${id}`)
 }
 
+export async function createOrganization(data: {
+  name: string
+  adminName: string
+  adminEmail: string
+  adminPassword: string
+  currency?: string
+}) {
+  return makeRequest('/organizations', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  })
+}
+
+export async function deleteOrganization(id: string) {
+  return makeRequest(`/organizations/${id}`, {
+    method: 'DELETE',
+  })
+}
+
 // Dashboard API
 export async function getDashboardStats() {
   return makeRequest('/dashboard/stats')
@@ -220,8 +239,8 @@ export async function getLeadStatusStats() {
 
 // ============== NEW FEATURE APIs ==============
 
-// Attachments API
-export async function uploadAttachment(file: File, entityType: 'lead' | 'deal' | 'task', entityId: string) {
+// Attachments API (for Deals, Tasks, and Organization Agreements)
+export async function uploadAttachment(file: File, entityType: 'deal' | 'task' | 'organization', entityId: string) {
   const token = getAccessToken()
   const formData = new FormData()
   formData.append('file', file)
@@ -241,7 +260,7 @@ export async function uploadAttachment(file: File, entityType: 'lead' | 'deal' |
   return response.json()
 }
 
-export async function getAttachments(entityType: 'lead' | 'deal' | 'task', entityId: string) {
+export async function getAttachments(entityType: 'deal' | 'task' | 'organization', entityId: string) {
   return makeRequest(`/attachments/${entityType}/${entityId}`)
 }
 

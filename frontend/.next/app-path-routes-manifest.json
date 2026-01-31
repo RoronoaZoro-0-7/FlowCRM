@@ -9,6 +9,7 @@
   "/notifications/page": "/notifications",
   "/organizations/page": "/organizations",
   "/page": "/",
+  "/register/page": "/register",
   "/settings/page": "/settings",
   "/tasks/page": "/tasks",
   "/users/[id]/page": "/users/[id]",

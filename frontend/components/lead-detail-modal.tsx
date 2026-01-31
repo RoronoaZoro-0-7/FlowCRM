@@ -24,11 +24,10 @@ import { Textarea } from '@/components/ui/textarea'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Lead } from './leads-table'
 import { toast } from 'sonner'
-import { FileUpload, AttachmentList } from './file-upload'
 import { ActivityTimeline } from './activity-timeline'
 import { LeadScoreCard } from './lead-score'
 import { LeadEnrollments } from './follow-up-sequences'
-import { getFollowUpSequences, getAttachments, getActivityTimeline } from '@/lib/api-service'
+import { getFollowUpSequences } from '@/lib/api-service'
 
 interface LeadDetailModalProps {
   lead: Lead | null
@@ -49,8 +48,6 @@ export function LeadDetailModal({
   const [isLoading, setIsLoading] = useState(false)
   const [activeTab, setActiveTab] = useState('details')
   const [sequences, setSequences] = useState<any[]>([])
-  const [attachments, setAttachments] = useState<any[]>([])
-  const [activities, setActivities] = useState<any[]>([])
 
   useEffect(() => {
     if (lead && isOpen) {
@@ -63,21 +60,8 @@ export function LeadDetailModal({
     if (!lead?.id) return
     
     try {
-      const [seqData, attachData, actData] = await Promise.allSettled([
-        getFollowUpSequences(),
-        getAttachments('lead', lead.id),
-        getActivityTimeline('lead', lead.id),
-      ])
-      
-      if (seqData.status === 'fulfilled') {
-        setSequences((seqData.value as any).sequences || [])
-      }
-      if (attachData.status === 'fulfilled') {
-        setAttachments((attachData.value as any).attachments || [])
-      }
-      if (actData.status === 'fulfilled') {
-        setActivities((actData.value as any).activities || [])
-      }
+      const seqData = await getFollowUpSequences()
+      setSequences((seqData as any).sequences || [])
     } catch (error) {
       console.error('Failed to fetch related data:', error)
     }
@@ -133,10 +117,9 @@ export function LeadDetailModal({
         </DialogHeader>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="details">Details</TabsTrigger>
             <TabsTrigger value="activity">Activity</TabsTrigger>
-            <TabsTrigger value="files">Files</TabsTrigger>
             <TabsTrigger value="followups">Follow-ups</TabsTrigger>
             <TabsTrigger value="score">Score</TabsTrigger>
           </TabsList>
@@ -235,24 +218,8 @@ export function LeadDetailModal({
 
           <TabsContent value="activity" className="mt-4">
             <ActivityTimeline
-              activities={activities}
-              loading={false}
-            />
-          </TabsContent>
-
-          <TabsContent value="files" className="mt-4 space-y-4">
-            <FileUpload
               entityType="lead"
               entityId={lead.id}
-              onUploadComplete={(attachment) => {
-                setAttachments((prev) => [...prev, attachment])
-              }}
-            />
-            <AttachmentList
-              attachments={attachments}
-              onDelete={(id) => {
-                setAttachments((prev) => prev.filter((a) => a.id !== id))
-              }}
             />
           </TabsContent>
 

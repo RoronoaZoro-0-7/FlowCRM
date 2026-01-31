@@ -1,21 +1,125 @@
 # FlowCRM - Complete Knowledge Base
 
-## 📋 Project Overview
+## 📋 What is FlowCRM?
 
-**FlowCRM** is a modern, enterprise-grade Customer Relationship Management (CRM) platform designed for sales teams to manage leads, deals, tasks, and customer relationships efficiently.
+**FlowCRM** is a modern, enterprise-grade **Customer Relationship Management (CRM)** platform that helps sales teams manage their entire sales process - from capturing leads to closing deals. It's a central hub where your sales team can track prospects, manage deals, collaborate in real-time, and get AI-powered insights to close more sales.
 
-### 🎯 Project Goals
+### 🎯 Who Is This For?
 
-1. **Streamline Sales Pipeline** - Track leads from initial contact to closed deals
-2. **Real-time Collaboration** - Instant updates across the team via WebSockets
-3. **Multi-tenant Architecture** - Support multiple organizations with data isolation
-4. **Role-based Access Control** - Granular permissions (OWNER, ADMIN, MANAGER, SALES)
-5. **Performance at Scale** - Redis caching, background jobs, optimized queries
-6. **Security First** - JWT tokens, 2FA support, audit logging, secure cookies
+- **Sales Teams** - Track leads, manage deals, hit quotas
+- **Sales Managers** - Monitor team performance, assign tasks, view analytics
+- **Business Owners** - Get visibility into the entire sales pipeline
+- **Multiple Organizations** - Each company gets its own isolated workspace
+
+### 🌟 Key Features at a Glance
+
+| Category | Features |
+|----------|----------|
+| **Lead Management** | Capture, track, qualify, and convert leads with scoring |
+| **Deal Pipeline** | Visual deal stages from qualification to closed-won |
+| **Task Management** | Assign tasks, set priorities, track deadlines |
+| **AI Sales Assistant** | Get sales insights and recommendations using real CRM data |
+| **Team Chat** | Real-time messaging between team members |
+| **Calendar** | Schedule meetings, calls, and follow-ups with month view |
+| **Analytics Dashboard** | Charts, metrics, KPIs, and performance tracking |
+| **Automations** | Follow-up sequences that run automatically |
+| **Webhooks** | Integrate with external systems with delivery logs |
+| **Custom Fields** | Add your own data fields to leads, deals, tasks |
+| **Data Export** | Export to Excel, PDF, JSON |
+| **2FA Security** | Two-factor authentication for account protection |
+| **Call Logging** | Log and track sales calls with stats |
+| **File Attachments** | Upload documents to deals, tasks, organizations (Cloudinary) |
+| **Bulk Actions** | Perform operations on multiple records |
+| **Filter Presets** | Save and reuse filter combinations |
+| **Logo Branding** | Custom logos for light/dark modes |
+| **Multi-Currency** | Support for USD, EUR, GBP, INR, etc. |
+| **Organization Management** | OWNER can create, view, delete organizations with agreements |
+| **Public Registration** | New organizations can self-register |
+
+---
+
+## 🛠️ Tech Stack
+
+| Layer | Technology |
+|-------|------------|
+| **Frontend** | Next.js 16, React 19, TypeScript, Tailwind CSS, shadcn/ui |
+| **Backend** | Node.js, Express.js, TypeScript |
+| **Database** | PostgreSQL (Aiven Cloud) |
+| **ORM** | Prisma |
+| **Cache** | Redis (Upstash) |
+| **Job Queue** | BullMQ (background jobs) |
+| **Real-time** | Socket.IO |
+| **Auth** | JWT + httpOnly Cookies + 2FA (TOTP) |
+| **Email** | Nodemailer (SMTP) |
+| **AI** | OpenRouter API (NVIDIA Nemotron model) |
+| **File Storage** | Cloudinary (deals, tasks, org agreements) |
+| **Markdown** | react-markdown + remark-gfm |
+| **Charts** | Recharts |
+| **Data Tables** | TanStack Table |
+| **Export** | XLSX, jsPDF |
+
+---
+
+## 📱 Application Pages
+
+| Route | Page | Description |
+|-------|------|-------------|
+| `/login` | Login | User authentication with 2FA support |
+| `/register` | Registration | Create new organization and owner account |
+| `/dashboard` | Dashboard | Stats, charts, activity feed, overdue tasks |
+| `/leads` | Leads | Lead list with filters, search, bulk actions |
+| `/leads/[id]` | Lead Detail | Lead info, activities, conversion |
+| `/deals` | Deals | Deal pipeline with stages and values |
+| `/tasks` | Tasks | Task list with status, priority, assignment |
+| `/users` | Team | User management (Admin+) |
+| `/calendar` | Calendar | Events, meetings, schedule view |
+| `/notifications` | Notifications | All notifications history |
+| `/settings` | Settings | Profile, security, org settings, webhooks, custom fields, automations |
+
+---
+
+## 🔐 User Roles & Permissions
+
+| Role | Description | Permissions |
+|------|-------------|-------------|
+| **OWNER** | Platform owner | Full access to everything |
+| **ADMIN** | Company admin | Manage users, org settings, all data |
+| **MANAGER** | Team lead | Create/assign tasks, view team data |
+| **SALES** | Sales rep | Manage own leads, deals, tasks |
 
 ---
 
 ## ⭐ Complete Feature Overview
+
+### 🤖 AI Sales Assistant
+
+The AI assistant is a floating chat button (bottom-right corner) that opens a slide-out panel where you can ask questions about your sales performance.
+
+**What makes it special:**
+- **Uses YOUR real data** - Fetches actual CRM metrics (lead counts, deal values, win rates)
+- **Markdown responses** - Tables, lists, bold text render beautifully
+- **Contextual conversation** - Remembers the last 10 messages
+- **Quick suggestions** - Pre-built prompts for common questions
+
+**Example questions:**
+- "Analyze our sales performance this quarter"
+- "Help me draft a follow-up email"
+- "What should I prioritize today?"
+
+**Data the AI can access:**
+- Total leads, deals, tasks counts
+- Pipeline value and stage distribution
+- Win rate and conversion metrics
+- Lead sources breakdown
+- Recent deals and leads
+- Overdue tasks count
+
+**Technical:**
+- Model: `nvidia/nemotron-3-nano-30b-a3b:free` via OpenRouter
+- Endpoint: `POST /api/ai/chat`
+- Requires: `OPENROUTER_API_KEY` in `.env`
+
+---
 
 ### 🔐 Authentication & Security Features
 
@@ -29,15 +133,18 @@
 | **Password Hashing** | bcrypt with salt rounds | `Backend/controllers/authController.ts` |
 | **Token Rotation** | Refresh tokens are rotated on each use | `Backend/controllers/authController.ts` |
 | **Auto Token Cleanup** | Daily cleanup of expired tokens via BullMQ | `Backend/services/tokenCleanupService.ts` |
+| **Public Registration** | New organizations can register via /register | `frontend/app/register/page.tsx` |
 
 ### 👥 User Management Features
 
 | Feature | Description | Frontend | Backend |
 |---------|-------------|----------|---------|
 | **User Registration** | OWNER creates org, ADMIN adds employees | `frontend/app/users/page.tsx` | `POST /api/users` |
+| **Public Registration** | New orgs can self-register at /register | `frontend/app/register/page.tsx` | `POST /api/auth/register` |
 | **User Profiles** | View/edit name, email, role, avatar | `frontend/app/settings/page.tsx` | `PUT /api/users/:id` |
 | **Role Management** | Change user roles (ADMIN+ only) | Users page actions | `PUT /api/users/:id` |
 | **User Deletion** | Soft/hard delete users | Users page actions | `DELETE /api/users/:id` |
+| **User Editing** | Edit user details via modal | `add-user-modal.tsx` | `PUT /api/users/:id` |
 | **Team Directory** | View all org members | `frontend/app/users/page.tsx` | `GET /api/users` |
 | **Password Change** | Secure password updates | Settings page | `PUT /api/auth/change-password` |
 | **2FA Setup** | Enable/disable with QR code | Settings page | `/api/2fa/setup`, `/verify`, `/disable` |
@@ -57,6 +164,10 @@
 | **Activity Tracking** | Notes, calls, emails, meetings on leads | Activity feed | `POST /api/leads/:id/activities` |
 | **Lead Search** | Search by name, email, company | Search input | Query params |
 | **Lead Filtering** | Filter by status, source, owner | Filter dropdowns | Query params |
+| **Lead Score** | Visual score indicator (Hot/Warm/Cold) | Score badge | Calculated |
+| **Bulk Actions** | Select multiple leads for bulk operations | Checkbox selection | Batch endpoints |
+
+**Lead Sources:** Website, Referral, Cold Call, LinkedIn, Trade Show, Webinar, Partner, Google Ads
 
 ### 💼 Deal Management Features
 
@@ -70,6 +181,8 @@
 | **Deal Assignment** | Assign deals to sales reps | Assignee dropdown | `assignedToId` |
 | **Lead Association** | Link deals to source leads | Lead dropdown | `leadId` |
 | **Stage Tracking** | Automatic stage change notifications | Real-time updates | Event emitter |
+| **Deal Editing** | Edit deals via modal with proper state clearing | `create-deal-modal.tsx` | `PUT /api/deals/:id` |
+| **Deal Deletion** | Delete deals (Admin+) | Delete button | `DELETE /api/deals/:id` |
 
 ### ✅ Task Management Features
 
@@ -78,12 +191,30 @@
 | **Task Creation** | Create tasks with title, description, due date | Create Task Modal | `POST /api/tasks` |
 | **Task Assignment** | Assign tasks to team members | Assignee dropdown | `assignedToId` |
 | **Task Priorities** | LOW, MEDIUM, HIGH priority levels | Priority badges | `priority` enum |
+| **Inline Priority Change** | Change priority directly from table | Priority dropdown | `PUT /api/tasks/:id` |
+| **Priority Sorting** | Sort tasks by priority (High → Low) | Sort toggle button | Frontend sorting |
 | **Task Status** | TODO → IN_PROGRESS → DONE | Status dropdown | `status` enum |
 | **Due Dates** | Set task deadlines | Date picker | `dueDate` column |
 | **Task Filtering** | Filter by status, priority, assignee | Filter buttons | Query params |
 | **Overdue Alerts** | Highlight overdue tasks | Red styling | Dashboard query |
 | **Task Notifications** | Notify on assignment/completion | Real-time + toast | Event emitter |
 | **Lead/Deal Tasks** | Link tasks to leads or deals | Association fields | `leadId`, `dealId` |
+| **Task Editing** | Edit tasks via modal | `create-task-modal.tsx` | `PUT /api/tasks/:id` |
+| **Task Deletion** | Delete tasks (Manager+) | Delete button | `DELETE /api/tasks/:id` |
+
+### 💬 Real-time Chat Features
+
+| Feature | Description | Frontend | Backend |
+|---------|-------------|----------|---------|
+| **Team Chat** | Real-time messaging between team members | `chat-panel.tsx` | Socket.IO |
+| **Chat Rooms** | Create group or 1:1 chat rooms | Create Room Modal | `POST /api/chat/rooms` |
+| **Duplicate Prevention** | Prevents creating duplicate 1:1 chats | Backend check | `existingRoom` query |
+| **User Search** | Search users when creating chats | Combobox with `shouldFilter={false}` | Server-side filtering |
+| **Room Deletion** | Delete chat rooms | Delete button | `DELETE /api/chat/rooms/:id` |
+| **Message History** | Persistent message storage | Message list | PostgreSQL |
+| **Real-time Updates** | Instant message delivery | Socket.IO events | `newMessage` event |
+| **Unread Indicators** | Show unread message count | Badge on room | Local state |
+| **Typing Indicators** | Show when users are typing | Typing status | Socket events |
 
 ### 🔔 Notification System Features
 
@@ -115,9 +246,14 @@
 | Feature | Description | Frontend | Backend |
 |---------|-------------|----------|---------|
 | **Org Creation** | Create org on registration | Registration flow | `POST /api/auth/register` |
-| **Org Settings** | Update org name, settings | Org settings page | `PUT /api/organizations/:id` |
+| **Add Organization** | OWNER can create new orgs | Add Org dialog | `POST /api/organizations` |
+| **Org Settings** | Update org name, settings | Org settings page | `PUT /api/organizations/settings` |
+| **View Org Details** | See org stats and agreements | Org detail dialog | `GET /api/organizations/:id` |
+| **Delete Organization** | OWNER can delete orgs with confirmation | Delete dialog | `DELETE /api/organizations/:id` |
+| **Org Agreements** | Upload contracts/agreements per org | FileUpload component | Cloudinary storage |
 | **Multi-tenancy** | Complete data isolation between orgs | All queries filtered | `orgId` on all models |
 | **Team Management** | View/manage org members | Users page | `GET /api/users` |
+| **Global Stats** | OWNER sees all orgs stats | Organizations page | `GET /api/organizations` |
 
 ### 📝 Activity Tracking Features
 
@@ -128,32 +264,150 @@
 | **Activity Creation** | Log activities on leads | Activity form | `POST /api/leads/:id/activities` |
 | **Activity Icons** | Visual icons per type | Icon components | Frontend only |
 
+### � Calendar Features
+
+| Feature | Description | Frontend | Backend |
+|---------|-------------|----------|---------|
+| **Month View** | Traditional calendar grid | Calendar component | Event queries |
+| **Event Creation** | Create meetings, calls, reminders | Event modal | `POST /api/calendar-events` |
+| **Event Types** | MEETING, CALL, TASK, REMINDER | Type dropdown | `eventType` enum |
+| **All-day Events** | Toggle for full-day events | Switch | `allDay` boolean |
+| **Date/Time** | Start and end times | DateTime pickers | `startTime`, `endTime` |
+| **Location** | Add meeting location | Input field | `location` field |
+| **Event Editing** | Update event details | Edit modal | `PUT /api/calendar-events/:id` |
+| **Event Deletion** | Remove events | Delete button | `DELETE /api/calendar-events/:id` |
+| **Navigation** | Previous/next month buttons | Arrow buttons | Frontend |
+| **Day Click** | Click a day to create event | Click handler | Frontend |
+| **Event Display** | Show events on calendar days | Event badges | Frontend |
+
 ### 📞 Call Logging Features
 
 | Feature | Description | Frontend | Backend |
 |---------|-------------|----------|---------|
-| **Call Logs** | Record call details | Call log form | `POST /api/call-logs` |
-| **Call Duration** | Track call length | Duration field | `duration` column |
-| **Call Outcome** | Track call results | Outcome dropdown | `outcome` field |
-| **Call Notes** | Add notes to calls | Notes textarea | `notes` field |
-
-### 📅 Calendar Events Features
-
-| Feature | Description | Frontend | Backend |
-|---------|-------------|----------|---------|
-| **Event Creation** | Create meetings, reminders | Calendar modal | `POST /api/calendar-events` |
-| **Event Types** | MEETING, CALL, TASK, REMINDER | Type dropdown | `eventType` enum |
-| **Date/Time** | Start and end times | DateTime pickers | `startTime`, `endTime` |
-| **Attendees** | Link to users | User selection | Relation |
+| **Log Calls** | Record inbound/outbound calls | Call log form | `POST /api/call-logs` |
+| **Call Direction** | Inbound or Outbound | Direction selector | `direction` enum |
+| **Call Duration** | Track call length in minutes | Duration input | `duration` column |
+| **Call Outcome** | Connected, Voicemail, No Answer, etc. | Outcome dropdown | `outcome` field |
+| **Call Notes** | Add detailed notes | Notes textarea | `notes` field |
+| **Link to Lead** | Associate with lead record | Lead selector | `leadId` relation |
+| **Call Stats** | View call metrics and analytics | Stats cards | Aggregation queries |
+| **Call History** | View past calls | Call list table | `GET /api/call-logs` |
 
 ### 🔄 Follow-up Sequences Features
 
 | Feature | Description | Frontend | Backend |
 |---------|-------------|----------|---------|
 | **Sequence Creation** | Create automated follow-up sequences | Sequence builder | `POST /api/follow-up-sequences` |
-| **Sequence Steps** | Define multiple steps | Step editor | `SequenceStep` model |
+| **Sequence Steps** | Define multiple steps (Email, Task, Notification) | Step editor | `SequenceStep` model |
 | **Delay Settings** | Days between steps | Delay input | `delayDays` field |
 | **Activation** | Active/inactive toggle | Toggle switch | `active` field |
+| **Lead Enrollment** | Enroll leads into sequences | Enroll button | `POST /api/follow-up-sequences/:id/enroll` |
+| **Enrollment Tracking** | See enrolled leads count | Badge | `_count.enrollments` |
+
+### 📎 File Attachment Features (Cloudinary Storage)
+
+| Feature | Description | Frontend | Backend |
+|---------|-------------|----------|---------|
+| **Deal Attachments** | Upload files to deals (contracts, proposals) | Upload component | `POST /api/attachments/deal/:id` |
+| **Task Attachments** | Upload files to tasks (references, docs) | Upload component | `POST /api/attachments/task/:id` |
+| **Org Agreements** | Organization contracts (OWNER only) | Org detail dialog | `POST /api/attachments/organization/:id` |
+| **Drag & Drop** | Drag files to upload | Drop zone | Frontend |
+| **File Types** | Images, PDFs, documents | Type validation | MIME type check |
+| **File Preview** | View uploaded files inline | Preview section | Frontend |
+| **File Download** | Download attachments | Download button | Cloudinary URL |
+| **File Delete** | Remove attachments | Delete button | `DELETE /api/attachments/:id` |
+| **Size Limit** | Max 10MB per file | Validation | Multer config |
+| **Progress Bar** | Upload progress indicator | Progress component | Frontend |
+
+**Storage Structure:**
+```
+flowcrm/crm/
+├── {orgId}/
+│   ├── deals/       # Deal documents
+│   └── tasks/       # Task files
+└── organizations/
+    └── {orgId}/agreements/  # Organization contracts
+```
+
+### 📤 Export Features
+
+| Feature | Description | Frontend | Backend |
+|---------|-------------|----------|---------|
+| **Export to JSON** | Raw data export | Export button | `GET /api/export/:entity?format=json` |
+| **Export to Excel** | Spreadsheet export (.xlsx) | Export button | XLSX library |
+| **Export to PDF** | Formatted document | Export button | jsPDF library |
+| **Bulk Export** | Export selected items | Bulk actions | Frontend filtering |
+| **Column Selection** | Choose which columns to export | Checkbox list | Frontend |
+
+### 🎯 Bulk Action Features
+
+| Feature | Description | Frontend | Backend |
+|---------|-------------|----------|---------|
+| **Select All** | Select/deselect all items | Checkbox | Frontend |
+| **Bulk Delete** | Delete multiple records | Confirmation dialog | Batch DELETE |
+| **Bulk Assign** | Assign to user | User selector | Batch UPDATE |
+| **Bulk Status Update** | Change status for many | Status selector | Batch UPDATE |
+| **Bulk Export** | Export selected items | Export modal | Frontend |
+
+### 💾 Filter Preset Features
+
+| Feature | Description | Frontend | Backend |
+|---------|-------------|----------|---------|
+| **Save Preset** | Save current filter combination | Save dialog | `POST /api/filter-presets` |
+| **Apply Preset** | Apply saved filters | Dropdown | Frontend |
+| **Default Preset** | Set a preset as default | Star icon | `PUT /api/filter-presets/:id` |
+| **Delete Preset** | Remove saved preset | Delete button | `DELETE /api/filter-presets/:id` |
+| **Entity-specific** | Presets for leads, deals, tasks | Entity type | `entityType` field |
+| **Local Storage** | Remember last used filters | Auto-save | Browser storage |
+
+### 🎨 Dashboard Widget Features
+
+| Feature | Description | Frontend | Backend |
+|---------|-------------|----------|---------|
+| **Widget Types** | Stats, Charts, Activity, Tasks, Calendar | Widget selector | `widgetType` field |
+| **Add Widget** | Add new widgets to dashboard | Add button | `POST /api/widgets` |
+| **Remove Widget** | Remove widgets | Delete button | `DELETE /api/widgets/:id` |
+| **Drag to Reorder** | Drag widgets to rearrange | react-grid-layout | Position storage |
+| **Resize Widgets** | Resize widget dimensions | Drag handles | Size storage |
+| **Reset Layout** | Reset to default layout | Reset button | `POST /api/widgets/reset` |
+| **Edit Mode** | Toggle edit mode for layout | Lock button | Frontend state |
+
+### 🏢 Organization Settings Features (Admin Only)
+
+| Feature | Description | Frontend | Backend |
+|---------|-------------|----------|---------|
+| **Org Name** | Update organization name | Input field | `PUT /api/organizations/:id` |
+| **Logo Upload** | Upload light/dark mode logos | Logo uploader | Cloudinary |
+| **Currency** | Set default currency | Currency selector | `currency` field |
+| **Custom Fields** | Define custom fields for entities | Custom fields manager | `POST /api/custom-fields` |
+| **Webhooks** | Configure webhook endpoints | Webhook settings | `PUT /api/webhooks` |
+| **Automations** | Manage follow-up sequences | Sequence manager | Follow-up routes |
+
+### 🔧 Custom Field Features
+
+| Feature | Description | Frontend | Backend |
+|---------|-------------|----------|---------|
+| **Field Types** | Text, Number, Date, Dropdown, Multi-select, Checkbox | Type selector | `fieldType` enum |
+| **Entity Types** | Apply to Leads, Deals, or Tasks | Entity selector | `entityType` field |
+| **Required Fields** | Mark fields as required | Toggle | `required` boolean |
+| **Dropdown Options** | Define options for dropdowns | Options editor | `options` JSON |
+| **Field Management** | Create, edit, delete fields | CRUD UI | Custom field routes |
+
+### 🔗 Webhook Features
+
+| Feature | Description | Frontend | Backend |
+|---------|-------------|----------|---------|
+| **Webhook URL** | Configure endpoint URL | Input field | `webhookUrl` field |
+| **Webhook Secret** | Set signing secret | Secret input | `webhookSecret` field |
+| **Event Selection** | Choose which events to send | Checkbox list | `webhookEvents` array |
+| **Test Webhook** | Send test payload | Test button | `POST /api/webhooks/test` |
+| **Delivery Logs** | View webhook delivery history | Log table | `WebhookLog` model |
+| **Retry Status** | See delivery attempts | Status badge | `attempts` field |
+
+**Webhook Events Available:**
+- `lead.created`, `lead.updated`, `lead.deleted`, `lead.status_changed`
+- `deal.created`, `deal.updated`, `deal.stage_changed`, `deal.won`, `deal.lost`
+- `task.created`, `task.completed`
 
 ### 🎨 UI/UX Features
 
@@ -230,6 +484,8 @@
 | **Real-time** | Socket.IO |
 | **Auth** | JWT + httpOnly Cookies |
 | **Email** | Nodemailer (SMTP) |
+| **AI** | OpenRouter API (NVIDIA Nemotron model) |
+| **Markdown** | react-markdown + remark-gfm |
 
 ---
 
@@ -3354,7 +3610,7 @@ export default function DashboardPage() {
 |--------|----------|------|-------------|
 | GET | `/api/tasks` | All | List tasks |
 | POST | `/api/tasks` | Manager+ | Create task |
-| PUT | `/api/tasks/:id` | All | Update task |
+| PUT | `/api/tasks/:id` | All | Update task (status, priority, all fields) |
 | DELETE | `/api/tasks/:id` | Manager+ | Delete task |
 
 ### Notifications
@@ -3379,6 +3635,230 @@ export default function DashboardPage() {
 | POST | `/api/2fa/verify` | Yes | Enable 2FA |
 | POST | `/api/2fa/disable` | Yes | Disable 2FA |
 
+### Chat
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| GET | `/api/chat/rooms` | All | List chat rooms |
+| POST | `/api/chat/rooms` | All | Create chat room (checks duplicates) |
+| DELETE | `/api/chat/rooms/:id` | All | Delete chat room |
+| GET | `/api/chat/rooms/:id/messages` | All | Get room messages |
+| POST | `/api/chat/rooms/:id/messages` | All | Send message |
+
+### AI Assistant (NEW!)
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| POST | `/api/ai/chat` | Yes | Chat with AI (includes CRM data context) |
+
+### Organizations (OWNER only)
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| GET | `/api/organizations` | OWNER | List all organizations with stats |
+| GET | `/api/organizations/:id` | OWNER | Get organization details |
+| POST | `/api/organizations` | OWNER | Create new organization with admin |
+| DELETE | `/api/organizations/:id` | OWNER | Delete organization (cascades all data) |
+| GET | `/api/organizations/settings/current` | Admin+ | Get current org settings |
+| PUT | `/api/organizations/settings` | Admin+ | Update org settings (name, logo, currency) |
+
+### Attachments (Cloudinary)
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| POST | `/api/attachments/deal/:dealId` | All | Upload file to deal |
+| POST | `/api/attachments/task/:taskId` | All | Upload file to task |
+| POST | `/api/attachments/organization/:orgId` | OWNER | Upload org agreement |
+| GET | `/api/attachments/:entityType/:entityId` | All/OWNER | Get attachments for entity |
+| DELETE | `/api/attachments/:id` | All/OWNER | Delete attachment |
+
+### Calendar Events
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| GET | `/api/calendar-events` | All | List user's events |
+| POST | `/api/calendar-events` | All | Create event |
+| PUT | `/api/calendar-events/:id` | All | Update event |
+| DELETE | `/api/calendar-events/:id` | All | Delete event |
+
+### Call Logs
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| GET | `/api/call-logs` | All | List call logs |
+| POST | `/api/call-logs` | All | Log a call |
+| GET | `/api/call-logs/stats` | All | Get call statistics |
+
+### Webhooks
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| GET | `/api/webhooks/config` | Admin+ | Get webhook config |
+| PUT | `/api/webhooks/config` | Admin+ | Update webhook config |
+| POST | `/api/webhooks/test` | Admin+ | Test webhook delivery |
+| GET | `/api/webhooks/logs` | Admin+ | Get delivery logs |
+
+### Custom Fields
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| GET | `/api/custom-fields` | Admin+ | List custom fields |
+| POST | `/api/custom-fields` | Admin+ | Create custom field |
+| PUT | `/api/custom-fields/:id` | Admin+ | Update custom field |
+| DELETE | `/api/custom-fields/:id` | Admin+ | Delete custom field |
+
+### Filter Presets
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| GET | `/api/filter-presets` | All | Get user's presets |
+| POST | `/api/filter-presets` | All | Save filter preset |
+| PUT | `/api/filter-presets/:id` | All | Update preset |
+| DELETE | `/api/filter-presets/:id` | All | Delete preset |
+
+### Dashboard Widgets
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| GET | `/api/widgets` | All | Get user's widgets |
+| POST | `/api/widgets` | All | Add widget |
+| PUT | `/api/widgets/:id` | All | Update widget position/size |
+| DELETE | `/api/widgets/:id` | All | Remove widget |
+| POST | `/api/widgets/reset` | All | Reset to default layout |
+
+### Follow-up Sequences
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| GET | `/api/follow-up-sequences` | All | List sequences |
+| POST | `/api/follow-up-sequences` | Admin+ | Create sequence |
+| PUT | `/api/follow-up-sequences/:id` | Admin+ | Update sequence |
+| DELETE | `/api/follow-up-sequences/:id` | Admin+ | Delete sequence |
+| POST | `/api/follow-up-sequences/:id/enroll` | All | Enroll lead |
+
+### Export
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| GET | `/api/export/leads` | All | Export leads (JSON/Excel/PDF) |
+| GET | `/api/export/deals` | All | Export deals |
+| GET | `/api/export/tasks` | All | Export tasks |
+
+### Analytics
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| GET | `/api/analytics/overview` | Admin+ | Get analytics overview |
+| GET | `/api/analytics/leads` | Admin+ | Lead analytics |
+| GET | `/api/analytics/deals` | Admin+ | Deal analytics |
+| GET | `/api/analytics/tasks` | Admin+ | Task analytics |
+
 ---
 
-*Last updated: January 2026*
+## 🤖 AI Assistant Architecture
+
+### Overview
+The AI Sales Assistant provides intelligent insights by analyzing real CRM data and responding with actionable recommendations.
+
+### Technology Stack
+| Component | Technology |
+|-----------|------------|
+| **AI Provider** | OpenRouter API |
+| **Model** | `nvidia/nemotron-3-nano-30b-a3b:free` |
+| **Context Size** | 256K tokens |
+| **Frontend** | React with `react-markdown` + `remark-gfm` |
+
+### Backend Controller (aiController.ts)
+
+```typescript
+// Data Summary Function - Fetches real CRM metrics
+async function getCRMDataSummary(orgId: string, userId: string) {
+    // Fetches:
+    // - Lead counts (total, new this month, by status, by source)
+    // - Deal counts (total, this quarter, by stage, total value)
+    // - Task counts (total, pending, overdue, completed)
+    // - Recent deals and leads
+    // - Calculated metrics (win rate, conversion rate, avg deal value)
+}
+
+// Chat Endpoint
+const chatWithAI = TryCatch(async (req, res) => {
+    // 1. Get user's org from JWT
+    // 2. Fetch CRM data summary
+    // 3. Build system prompt with real data
+    // 4. Call OpenRouter API
+    // 5. Return AI response
+});
+```
+
+### System Prompt Structure
+```
+You are an AI sales assistant for FlowCRM...
+
+## CRM Overview
+- Total Leads: [actual count]
+- New Leads This Month: [actual count]
+- Total Deals: [actual count]
+...
+
+## Key Metrics
+- Win Rate: [calculated %]
+- Average Deal Value: [calculated $]
+...
+
+## Leads by Status
+[dynamic list from database]
+
+## Deals by Stage
+[dynamic list with values]
+
+## Recent Deals
+[last 5 deals with details]
+
+## Recent Leads
+[last 5 leads with details]
+```
+
+### Frontend Component (ai-assistant.tsx)
+
+```typescript
+// Floating button that opens slide-out panel
+export function AIAssistant() {
+    // State: messages, input, loading
+    // Auto-scroll to latest message
+    // Markdown rendering for AI responses
+    // Quick suggestion buttons
+}
+```
+
+### Markdown Rendering
+- Tables with borders and styling
+- Headings (H1, H2, H3)
+- Bold, italic text
+- Bullet and numbered lists
+- Code blocks
+
+### Environment Variables
+```env
+OPENROUTER_API_KEY=sk-or-v1-... # Get from openrouter.ai/keys
+```
+
+---
+
+## 📊 Project Statistics
+
+| Metric | Count |
+|--------|-------|
+| **Backend Routes** | 21 route files |
+| **Frontend Pages** | 12+ pages |
+| **UI Components** | 40+ components |
+| **Database Models** | 25+ Prisma models |
+| **API Endpoints** | 80+ endpoints |
+| **Real-time Events** | 10+ Socket.IO events |
+
+---
+
+## 🚀 Deployment Checklist
+
+- [ ] Set all environment variables
+- [ ] Configure PostgreSQL database
+- [ ] Configure Redis cache
+- [ ] Set up Cloudinary account for file uploads
+- [ ] Configure SMTP for emails
+- [ ] Get OpenRouter API key for AI features
+- [ ] Run `npx prisma migrate deploy`
+- [ ] Run `npx prisma db seed` (optional test data)
+- [ ] Build frontend: `npm run build`
+- [ ] Start backend: `npm start`
+- [ ] Start frontend: `npm start`
+
+---
+
+*Last updated: January 31, 2026*
