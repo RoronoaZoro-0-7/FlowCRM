@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { getUsers } from '@/lib/api-service'
+import { getUsers, updateUser } from '@/lib/api-service'
 import { useAuth } from '@/contexts/auth-context'
 import {
   Table,
@@ -33,11 +33,13 @@ import { Input } from '@/components/ui/input'
 import { MoreHorizontal, Edit2, Trash2, Eye, Search, Filter } from 'lucide-react'
 import { toast } from 'sonner'
 
+export type UserRole = 'OWNER' | 'ADMIN' | 'MANAGER' | 'SALES'
+
 export interface User {
   id: string
   name: string
   email: string
-  role: 'OWNER' | 'ADMIN' | 'MANAGER' | 'SALES'
+  role: UserRole
   status: 'active' | 'inactive'
   createdAt: string
   lastLogin?: string
@@ -60,7 +62,7 @@ const STATUS_COLORS: Record<string, string> = {
   inactive: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200',
 }
 
-const ROLE_OPTIONS = ['OWNER', 'ADMIN', 'MANAGER', 'SALES']
+const ROLE_OPTIONS: UserRole[] = ['OWNER', 'ADMIN', 'MANAGER', 'SALES']
 
 export function UsersTable({ onEditUser, onDeleteUser }: UsersTableProps) {
   const [users, setUsers] = useState<User[]>([])
@@ -115,6 +117,40 @@ export function UsersTable({ onEditUser, onDeleteUser }: UsersTableProps) {
     // MANAGER can view SALES profiles
     if (currentUser.role === 'MANAGER' && user.role === 'SALES') return true
     return false
+  }
+
+  // Check if current user can change another user's role
+  const canChangeRole = (targetUser: User): boolean => {
+    if (!currentUser) return false
+    // Can't change own role
+    if (currentUser.id === targetUser.id) return false
+    // Only OWNER and ADMIN can change roles
+    if (currentUser.role !== 'OWNER' && currentUser.role !== 'ADMIN') return false
+    // ADMIN cannot change OWNER roles
+    if (currentUser.role === 'ADMIN' && targetUser.role === 'OWNER') return false
+    return true
+  }
+
+  // Get available roles based on current user's role
+  const getAvailableRoles = (): UserRole[] => {
+    if (!currentUser) return []
+    if (currentUser.role === 'OWNER') return ['ADMIN', 'MANAGER', 'SALES']
+    if (currentUser.role === 'ADMIN') return ['MANAGER', 'SALES']
+    return []
+  }
+
+  const handleRoleChange = async (userId: string, newRole: UserRole) => {
+    try {
+      await updateUser(userId, { role: newRole })
+      setUsers((prev) =>
+        prev.map((u) =>
+          u.id === userId ? { ...u, role: newRole } : u
+        )
+      )
+      toast.success('User role updated successfully')
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to update role')
+    }
   }
 
   const handleViewProfile = (userId: string) => {
@@ -231,10 +267,32 @@ export function UsersTable({ onEditUser, onDeleteUser }: UsersTableProps) {
                     </div>
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">{user.email}</TableCell>
-                  <TableCell>
-                    <Badge variant="outline" className={ROLE_COLORS[user.role] || 'bg-gray-100'}>
-                      {user.role}
-                    </Badge>
+                  <TableCell onClick={(e) => e.stopPropagation()}>
+                    {canChangeRole(user) ? (
+                      <Select
+                        value={user.role}
+                        onValueChange={(value) => handleRoleChange(user.id, value as UserRole)}
+                      >
+                        <SelectTrigger className="w-[120px] h-8">
+                          <Badge variant="outline" className={ROLE_COLORS[user.role] || 'bg-gray-100'}>
+                            {user.role}
+                          </Badge>
+                        </SelectTrigger>
+                        <SelectContent>
+                          {getAvailableRoles().map((role) => (
+                            <SelectItem key={role} value={role}>
+                              <Badge variant="outline" className={ROLE_COLORS[role]}>
+                                {role}
+                              </Badge>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <Badge variant="outline" className={ROLE_COLORS[user.role] || 'bg-gray-100'}>
+                        {user.role}
+                      </Badge>
+                    )}
                   </TableCell>
                   <TableCell>
                     <Badge variant="outline" className={STATUS_COLORS[user.status] || 'bg-gray-100'}>

@@ -14,10 +14,22 @@ import dealRoutes from './routes/dealRoutes';
 import twoFactorRoutes from './routes/twoFactorRoutes';
 import dashboardRoutes from './routes/dashboardRoutes';
 import organizationRoutes from './routes/organizationRoutes';
+import attachmentRoutes from './routes/attachmentRoutes';
+import chatRoutes from './routes/chatRoutes';
+import analyticsRoutes from './routes/analyticsRoutes';
+import exportRoutes from './routes/exportRoutes';
+import widgetRoutes from './routes/widgetRoutes';
+import filterRoutes from './routes/filterRoutes';
+import callLogRoutes from './routes/callLogRoutes';
+import calendarRoutes from './routes/calendarRoutes';
+import webhookRoutes from './routes/webhookRoutes';
+import customFieldRoutes from './routes/customFieldRoutes';
+import followUpRoutes from './routes/followUpRoutes';
 import { rateLimitApi } from './middleware/rateLimiter';
 import { REDIS_ENABLED, getRedis } from './config/redis';
 import { startWorkers } from './queues/workers';
 import { initTokenCleanupScheduler } from './services/tokenCleanupService';
+import { setIO, initializeSocketHandlers } from './config/socket';
 
 dotenv.config();
 const app = express();
@@ -31,36 +43,9 @@ const io = new Server(httpServer, {
     }
 });
 
-// Store user socket connections
-const userSockets = new Map<string, string>();
-
-io.on('connection', (socket) => {
-    console.log('🔌 Client connected:', socket.id);
-
-    // User joins with their userId
-    socket.on('join', (userId: string) => {
-        userSockets.set(userId, socket.id);
-        socket.join(`user:${userId}`);
-        console.log(`👤 User ${userId} joined with socket ${socket.id}`);
-    });
-``
-    // Join organization room for broadcast events
-    socket.on('joinOrg', (orgId: string) => {
-        socket.join(`org:${orgId}`);
-        console.log(`🏢 Socket ${socket.id} joined org room ${orgId}`);
-    });
-
-    socket.on('disconnect', () => {
-        // Remove user from map
-        for (const [userId, socketId] of userSockets.entries()) {
-            if (socketId === socket.id) {
-                userSockets.delete(userId);
-                break;
-            }
-        }
-        console.log('🔌 Client disconnected:', socket.id);
-    });
-});
+// Initialize socket handlers and make io available globally
+setIO(io);
+initializeSocketHandlers(io);
 
 // Make io accessible to routes
 app.set('io', io);
@@ -117,6 +102,17 @@ app.use("/api/deals", dealRoutes);
 app.use("/api/2fa", twoFactorRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/organizations", organizationRoutes);
+app.use("/api/attachments", attachmentRoutes);
+app.use("/api/chat", chatRoutes);
+app.use("/api/analytics", analyticsRoutes);
+app.use("/api/export", exportRoutes);
+app.use("/api/widgets", widgetRoutes);
+app.use("/api/filters", filterRoutes);
+app.use("/api/calls", callLogRoutes);
+app.use("/api/calendar", calendarRoutes);
+app.use("/api/webhooks", webhookRoutes);
+app.use("/api/custom-fields", customFieldRoutes);
+app.use("/api/follow-up", followUpRoutes);
 
 httpServer.listen(3000, async () => {
     console.log('🚀 Server is running on port 3000');

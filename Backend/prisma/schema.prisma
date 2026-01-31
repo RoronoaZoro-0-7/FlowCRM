@@ -19,6 +19,9 @@ enum NotificationType {
   USER_ADDED
   LEAD_ASSIGNED
   DEAL_UPDATED
+  TASK_REMINDER
+  MENTION
+  CHAT_MESSAGE
   SYSTEM
 }
 
@@ -36,6 +39,9 @@ enum ActivityType {
   CALL
   EMAIL
   MEETING
+  FILE_UPLOAD
+  STATUS_CHANGE
+  STAGE_CHANGE
 }
 
 enum TaskStatus {
@@ -50,18 +56,40 @@ enum TaskPriority {
   HIGH
 }
 
+enum Currency {
+  USD
+  EUR
+  GBP
+  INR
+  JPY
+  AUD
+  CAD
+}
+
 model Organization {
   id        String   @id @default(uuid())
   name      String
   createdAt DateTime @default(now())
 
-  users         User[]
-  leads         Lead[]
-  deals         Deal[]
-  events        Event[]
-  audits        AuditLog[]
-  tasks         Task[]
-  notifications Notification[]
+  // Settings
+  currency        Currency @default(USD)
+  logoLight       String?  // Light mode logo URL
+  logoDark        String?  // Dark mode logo URL
+  webhookUrl      String?  // Webhook endpoint URL
+  webhookSecret   String?  // Webhook signing secret
+  webhookEvents   String[] // Events to trigger webhook
+
+  users           User[]
+  leads           Lead[]
+  deals           Deal[]
+  events          Event[]
+  audits          AuditLog[]
+  tasks           Task[]
+  notifications   Notification[]
+  customFields    CustomField[]
+  chatRooms       ChatRoom[]
+  dashboardWidgets DashboardWidget[]
+  
   @@map("organizations")
 }
 
@@ -71,27 +99,43 @@ model User {
   name      String
   password  String
   role      Role     @default(SALES)
+  avatar    String?  // Cloudinary avatar URL
+  phone     String?
   createdAt DateTime @default(now())
 
   // 2FA fields
   twoFactorEnabled Boolean  @default(false)
   twoFactorSecret  String?
 
+  // Notification preferences
+  emailNotifications Boolean @default(true)
+  pushNotifications  Boolean @default(true)
+
   // Each user belongs to exactly one organization
   orgId String
   org   Organization @relation(fields: [orgId], references: [id])
 
   // Relations
-  ownedLeads     Lead[]         @relation("OwnedLeads")
-  assignedLeads  Lead[]         @relation("AssignedLeads")
-  assignedDeals  Deal[]         @relation("AssignedDeals")
-  activities     Activity[]
-  assignedTasks  Task[]         @relation("AssignedTasks")
-  createdTasks   Task[]         @relation("CreatedTasks")
-  notifications  Notification[]
-  refreshTokens  RefreshToken[]
-  auditLogs      AuditLog[]
-  events         Event[]
+  ownedLeads       Lead[]         @relation("OwnedLeads")
+  assignedLeads    Lead[]         @relation("AssignedLeads")
+  assignedDeals    Deal[]         @relation("AssignedDeals")
+  ownedDeals       Deal[]         @relation("OwnedDeals")
+  activities       Activity[]
+  assignedTasks    Task[]         @relation("AssignedTasks")
+  createdTasks     Task[]         @relation("CreatedTasks")
+  notifications    Notification[]
+  refreshTokens    RefreshToken[]
+  auditLogs        AuditLog[]
+  events           Event[]
+  attachments      Attachment[]
+  chatMessages     ChatMessage[]
+  chatMemberships  ChatMember[]
+  mentions         Mention[]      @relation("MentionedUser")
+  createdMentions  Mention[]      @relation("MentionCreator")
+  callLogs         CallLog[]
+  calendarEvents   CalendarEvent[]
+  dashboardWidgets DashboardWidget[]
+  filterPresets    FilterPreset[]
 
   @@map("users")
 }
@@ -105,6 +149,14 @@ model Lead {
   source  String?
   status  LeadStatus @default(NEW)
   value   Int        @default(0)
+  currency Currency  @default(USD)
+
+  // Lead Scoring
+  score        Int     @default(0)  // 0-100 lead score
+  scoreFactors Json?   // Breakdown of scoring factors
+
+  // Custom field values (JSON storage)
+  customFieldValues Json?
 
   orgId   String
   ownerId String
@@ -114,9 +166,12 @@ model Lead {
   owner      User         @relation("OwnedLeads", fields: [ownerId], references: [id])
   assignedTo User?        @relation("AssignedLeads", fields: [assignedToId], references: [id])
 
-  activities Activity[]
-  tasks      Task[]
-  deals      Deal[]
+  activities  Activity[]
+  tasks       Task[]
+  deals       Deal[]
+  attachments Attachment[]
+  mentions    Mention[]
+  callLogs    CallLog[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now()) @updatedAt
@@ -128,9 +183,14 @@ model Deal {
   id                String    @id @default(uuid())
   name              String
   value             Int       @default(0)
+  currency          Currency  @default(USD)
   stage             String    @default("QUALIFICATION")
+  probability       Int       @default(10)
   expectedCloseDate DateTime?
   closeDate         DateTime?
+
+  // Custom field values (JSON storage)
+  customFieldValues Json?
 
   orgId        String
   org          Organization @relation(fields: [orgId], references: [id])
@@ -138,10 +198,16 @@ model Deal {
   leadId       String?
   lead         Lead?    @relation(fields: [leadId], references: [id])
 
+  ownerId      String?
+  owner        User?    @relation("OwnedDeals", fields: [ownerId], references: [id])
+
   assignedToId String?
   assignedTo   User?    @relation("AssignedDeals", fields: [assignedToId], references: [id])
 
   tasks        Task[]
+  attachments  Attachment[]
+  mentions     Mention[]
+  activities   Activity[]    @relation("DealActivities")
 
   createdAt    DateTime @default(now())
   updatedAt    DateTime @default(now()) @updatedAt
@@ -153,12 +219,15 @@ model Activity {
   id      String       @id @default(uuid())
   type    ActivityType
   content String
+  metadata Json?       // Extra data like old/new values for changes
 
-  leadId String
+  leadId String?
   userId String
+  dealId String?
 
-  lead Lead @relation(fields: [leadId], references: [id])
-  user User @relation(fields: [userId], references: [id])
+  lead Lead? @relation(fields: [leadId], references: [id])
+  deal Deal? @relation("DealActivities", fields: [dealId], references: [id])
+  user User  @relation(fields: [userId], references: [id])
 
   createdAt DateTime @default(now())
 
@@ -172,6 +241,10 @@ model Task {
   status      TaskStatus   @default(TODO)
   priority    TaskPriority @default(MEDIUM)
   dueDate     DateTime?
+
+  // Reminder settings
+  reminderSent   Boolean   @default(false)
+  reminderAt     DateTime?
 
   leadId       String?
   lead         Lead?        @relation(fields: [leadId], references: [id])
@@ -187,6 +260,8 @@ model Task {
 
   orgId        String
   org          Organization @relation(fields: [orgId], references: [id])
+
+  attachments  Attachment[]
 
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
@@ -261,4 +336,278 @@ model RefreshToken {
   createdAt DateTime @default(now())
 
   @@map("refresh_tokens")
+}
+
+// ============== NEW MODELS FOR FEATURES ==============
+
+// File Attachments (Cloudinary)
+model Attachment {
+  id        String   @id @default(uuid())
+  filename  String
+  url       String   // Cloudinary URL
+  publicId  String   // Cloudinary public ID for deletion
+  mimeType  String
+  size      Int      // File size in bytes
+  
+  // Polymorphic relations
+  leadId    String?
+  lead      Lead?    @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  
+  dealId    String?
+  deal      Deal?    @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  
+  taskId    String?
+  task      Task?    @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  
+  uploadedById String
+  uploadedBy   User   @relation(fields: [uploadedById], references: [id])
+  
+  createdAt DateTime @default(now())
+  
+  @@map("attachments")
+}
+
+// Custom Fields per Organization
+model CustomField {
+  id        String   @id @default(uuid())
+  name      String
+  fieldType String   // text, number, date, select, multiselect, checkbox
+  options   String[] // For select/multiselect types
+  required  Boolean  @default(false)
+  entityType String  // lead, deal, task
+  
+  orgId     String
+  org       Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  
+  createdAt DateTime @default(now())
+  
+  @@unique([orgId, name, entityType])
+  @@map("custom_fields")
+}
+
+// In-App Chat
+model ChatRoom {
+  id        String   @id @default(uuid())
+  name      String?  // For group chats
+  type      String   @default("direct") // direct, group, deal, lead
+  
+  // Link to entity for context
+  dealId    String?
+  leadId    String?
+  
+  orgId     String
+  org       Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  
+  members   ChatMember[]
+  messages  ChatMessage[]
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@map("chat_rooms")
+}
+
+model ChatMember {
+  id        String   @id @default(uuid())
+  
+  roomId    String
+  room      ChatRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  lastReadAt DateTime?
+  
+  createdAt DateTime @default(now())
+  
+  @@unique([roomId, userId])
+  @@map("chat_members")
+}
+
+model ChatMessage {
+  id        String   @id @default(uuid())
+  content   String
+  
+  roomId    String
+  room      ChatRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  
+  senderId  String
+  sender    User     @relation(fields: [senderId], references: [id])
+  
+  mentions  Mention[]
+  
+  createdAt DateTime @default(now())
+  
+  @@map("chat_messages")
+}
+
+// @Mentions
+model Mention {
+  id        String   @id @default(uuid())
+  
+  // Who was mentioned
+  userId    String
+  user      User     @relation("MentionedUser", fields: [userId], references: [id])
+  
+  // Who created the mention
+  createdById String
+  createdBy   User   @relation("MentionCreator", fields: [createdById], references: [id])
+  
+  // Where the mention occurred (polymorphic)
+  messageId String?
+  message   ChatMessage? @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  
+  leadId    String?
+  lead      Lead?    @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  
+  dealId    String?
+  deal      Deal?    @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  
+  createdAt DateTime @default(now())
+  
+  @@map("mentions")
+}
+
+// Call Logging
+model CallLog {
+  id          String   @id @default(uuid())
+  phoneNumber String
+  direction   String   // inbound, outbound
+  duration    Int?     // Duration in seconds
+  outcome     String?  // answered, voicemail, no_answer, busy
+  notes       String?
+  recordingUrl String? // If call recording is available
+  
+  leadId      String?
+  lead        Lead?    @relation(fields: [leadId], references: [id])
+  
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  
+  createdAt   DateTime @default(now())
+  
+  @@map("call_logs")
+}
+
+// Calendar Events
+model CalendarEvent {
+  id          String   @id @default(uuid())
+  title       String
+  description String?
+  startTime   DateTime
+  endTime     DateTime
+  allDay      Boolean  @default(false)
+  location    String?
+  
+  // External calendar sync
+  externalId  String?  // Google/Outlook event ID
+  provider    String?  // google, outlook
+  
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@map("calendar_events")
+}
+
+// Dashboard Widget Configuration
+model DashboardWidget {
+  id        String   @id @default(uuid())
+  widgetType String  // stats, chart, pipeline, tasks, activity, leaderboard, forecast
+  title     String
+  position  Int      // Order/position on dashboard
+  size      String   @default("medium") // small, medium, large
+  config    Json?    // Widget-specific configuration
+  
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  orgId     String
+  org       Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@map("dashboard_widgets")
+}
+
+// Filter Presets (for search/filter persistence)
+model FilterPreset {
+  id        String   @id @default(uuid())
+  name      String
+  entityType String  // leads, deals, tasks, users
+  filters   Json     // Saved filter configuration
+  isDefault Boolean  @default(false)
+  
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  createdAt DateTime @default(now())
+  
+  @@map("filter_presets")
+}
+
+// Webhook Events Log
+model WebhookLog {
+  id          String   @id @default(uuid())
+  eventType   String
+  payload     Json
+  status      String   // pending, success, failed
+  statusCode  Int?
+  response    String?
+  attempts    Int      @default(0)
+  
+  orgId       String
+  
+  createdAt   DateTime @default(now())
+  
+  @@map("webhook_logs")
+}
+
+// Auto Follow-up Sequences
+model FollowUpSequence {
+  id          String   @id @default(uuid())
+  name        String
+  active      Boolean  @default(true)
+  
+  orgId       String
+  
+  steps       FollowUpStep[]
+  
+  createdAt   DateTime @default(now())
+  
+  @@map("follow_up_sequences")
+}
+
+model FollowUpStep {
+  id          String   @id @default(uuid())
+  sequenceId  String
+  sequence    FollowUpSequence @relation(fields: [sequenceId], references: [id], onDelete: Cascade)
+  
+  stepOrder   Int
+  delayDays   Int      // Days to wait before this step
+  actionType  String   // email, task, notification
+  subject     String?
+  content     String
+  
+  createdAt   DateTime @default(now())
+  
+  @@map("follow_up_steps")
+}
+
+model FollowUpEnrollment {
+  id          String   @id @default(uuid())
+  sequenceId  String
+  leadId      String
+  currentStep Int      @default(0)
+  status      String   @default("active") // active, paused, completed, cancelled
+  nextRunAt   DateTime?
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@unique([sequenceId, leadId])
+  @@map("follow_up_enrollments")
 }

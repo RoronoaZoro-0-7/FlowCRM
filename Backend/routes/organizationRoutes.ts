@@ -8,7 +8,52 @@ const router = Router();
 
 router.use(isAuth);
 
-// Only OWNER can access organizations
+/**
+ * Get current organization settings (accessible by ADMIN and OWNER)
+ */
+router.get('/settings/current', requireRole('ADMIN', 'OWNER'), TryCatch(async (req: Request, res: Response) => {
+    const orgId = req.user!.orgId;
+
+    const organization = await prisma.organization.findUnique({
+        where: { id: orgId },
+        select: {
+            id: true,
+            name: true,
+            currency: true,
+            logoLight: true,
+            logoDark: true,
+        },
+    });
+
+    return res.json({ settings: organization });
+}));
+
+/**
+ * Update organization settings (accessible by ADMIN and OWNER)
+ */
+router.put('/settings', requireRole('ADMIN', 'OWNER'), TryCatch(async (req: Request, res: Response) => {
+    const orgId = req.user!.orgId;
+    const { currency, logoLight, logoDark, name } = req.body;
+
+    const updateData: any = {};
+    if (currency) updateData.currency = currency;
+    if (logoLight !== undefined) updateData.logoLight = logoLight;
+    if (logoDark !== undefined) updateData.logoDark = logoDark;
+    if (name) updateData.name = name;
+
+    if (Object.keys(updateData).length === 0) {
+        return res.status(400).json({ message: 'No update data provided' });
+    }
+
+    const organization = await prisma.organization.update({
+        where: { id: orgId },
+        data: updateData,
+    });
+
+    return res.json({ organization, message: 'Settings updated successfully' });
+}));
+
+// Only OWNER can access full organization management
 router.use(requireRole('OWNER'));
 
 /**

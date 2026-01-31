@@ -19,7 +19,16 @@
     "afterFiles": [],
     "fallback": []
   },
-  "dynamicRoutes": [],
+  "dynamicRoutes": [
+    {
+      "page": "/users/[id]",
+      "regex": "^/users/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPid": "nxtPid"
+      },
+      "namedRegex": "^/users/(?<nxtPid>[^/]+?)(?:/)?$"
+    }
+  ],
   "staticRoutes": [
     {
       "page": "/",
@@ -38,6 +47,12 @@
       "regex": "^/_not\\-found(?:/)?$",
       "routeKeys": {},
       "namedRegex": "^/_not\\-found(?:/)?$"
+    },
+    {
+      "page": "/calendar",
+      "regex": "^/calendar(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/calendar(?:/)?$"
     },
     {
       "page": "/dashboard",
@@ -68,6 +83,12 @@
       "regex": "^/notifications(?:/)?$",
       "routeKeys": {},
       "namedRegex": "^/notifications(?:/)?$"
+    },
+    {
+      "page": "/organizations",
+      "regex": "^/organizations(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/organizations(?:/)?$"
     },
     {
       "page": "/settings",

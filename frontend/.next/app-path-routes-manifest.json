@@ -1,13 +1,16 @@
 {
   "/_global-error/page": "/_global-error",
   "/_not-found/page": "/_not-found",
+  "/calendar/page": "/calendar",
   "/dashboard/page": "/dashboard",
   "/deals/page": "/deals",
   "/leads/page": "/leads",
   "/login/page": "/login",
   "/notifications/page": "/notifications",
+  "/organizations/page": "/organizations",
   "/page": "/",
   "/settings/page": "/settings",
   "/tasks/page": "/tasks",
+  "/users/[id]/page": "/users/[id]",
   "/users/page": "/users"
 }

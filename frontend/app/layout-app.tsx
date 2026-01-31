@@ -4,6 +4,8 @@ import React from "react"
 
 import { SidebarNav } from '@/components/sidebar-nav'
 import { ProtectedRoute } from '@/components/protected-route'
+import { ChatPanel } from '@/components/chat-panel'
+import { AIAssistant } from '@/components/ai-assistant'
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -15,6 +17,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             {children}
           </div>
         </main>
+        {/* Chat Panel */}
+        <ChatPanel />
+        {/* AI Assistant */}
+        <AIAssistant />
       </div>
     </ProtectedRoute>
   )

@@ -17,6 +17,27 @@ interface Notification {
     createdAt: string
 }
 
+interface ChatMessage {
+    id: string
+    roomId: string
+    content: string
+    senderId: string
+    sender?: {
+        id: string
+        name: string
+        email: string
+    }
+    mentions?: string[]
+    createdAt: string
+}
+
+interface TypingData {
+    roomId: string
+    userId: string
+    userName: string
+    isTyping: boolean
+}
+
 interface SocketContextType {
     socket: Socket | null
     isConnected: boolean
@@ -25,6 +46,13 @@ interface SocketContextType {
     markAsRead: (id: string) => Promise<void>
     markAllAsRead: () => Promise<void>
     refreshNotifications: () => Promise<void>
+    // Chat methods
+    joinRoom: (roomId: string) => void
+    leaveRoom: (roomId: string) => void
+    sendChatMessage: (roomId: string, content: string, mentionIds?: string[]) => void
+    emitTyping: (roomId: string, isTyping: boolean) => void
+    onChatMessage: (callback: (message: ChatMessage) => void) => () => void
+    onTyping: (callback: (data: TypingData) => void) => () => void
 }
 
 const SocketContext = createContext<SocketContextType | undefined>(undefined)
@@ -130,6 +158,37 @@ export function SocketProvider({ children }: { children: ReactNode }) {
         }
     }
 
+    // Chat methods
+    const joinRoom = useCallback((roomId: string) => {
+        socket?.emit('join_room', roomId)
+    }, [socket])
+
+    const leaveRoom = useCallback((roomId: string) => {
+        socket?.emit('leave_room', roomId)
+    }, [socket])
+
+    const sendChatMessage = useCallback((roomId: string, content: string, mentionIds?: string[]) => {
+        socket?.emit('chat_message', { roomId, content, mentionIds })
+    }, [socket])
+
+    const emitTyping = useCallback((roomId: string, isTyping: boolean) => {
+        socket?.emit('typing', { roomId, isTyping })
+    }, [socket])
+
+    const onChatMessage = useCallback((callback: (message: ChatMessage) => void) => {
+        socket?.on('new_message', callback)
+        return () => {
+            socket?.off('new_message', callback)
+        }
+    }, [socket])
+
+    const onTyping = useCallback((callback: (data: TypingData) => void) => {
+        socket?.on('typing', callback)
+        return () => {
+            socket?.off('typing', callback)
+        }
+    }, [socket])
+
     const unreadCount = notifications.filter(n => !n.isRead).length
 
     return (
@@ -142,6 +201,13 @@ export function SocketProvider({ children }: { children: ReactNode }) {
                 markAsRead,
                 markAllAsRead,
                 refreshNotifications: fetchNotifications,
+                // Chat
+                joinRoom,
+                leaveRoom,
+                sendChatMessage,
+                emitTyping,
+                onChatMessage,
+                onTyping,
             }}
         >
             {children}

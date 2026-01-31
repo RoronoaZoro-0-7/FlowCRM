@@ -1,11 +1,28 @@
 'use client'
 
+import { useState } from 'react'
 import { AppLayout } from '@/app/layout-app'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { DealsTable, Deal } from '@/components/deals-table'
+import { CreateDealModal } from '@/components/create-deal-modal'
 import { Button } from '@/components/ui/button'
 import { Plus } from 'lucide-react'
 
 export default function DealsPage() {
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
+  const [refreshTrigger, setRefreshTrigger] = useState(0)
+  const [editingDeal, setEditingDeal] = useState<Deal | null>(null)
+
+  const handleDealCreated = () => {
+    setRefreshTrigger((prev) => prev + 1)
+    setIsCreateModalOpen(false)
+    setEditingDeal(null)
+  }
+
+  const handleEditDeal = (deal: Deal) => {
+    setEditingDeal(deal)
+    setIsCreateModalOpen(true)
+  }
+
   return (
     <AppLayout>
       <div className="space-y-6">
@@ -13,23 +30,26 @@ export default function DealsPage() {
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Deals</h1>
             <p className="text-muted-foreground mt-2">
-              Manage your sales pipeline with Kanban view
+              Manage your sales pipeline and track deals
             </p>
           </div>
-          <Button size="lg" className="gap-2">
+          <Button size="lg" className="gap-2" onClick={() => setIsCreateModalOpen(true)}>
             <Plus className="h-4 w-4" />
             New Deal
           </Button>
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Sales Pipeline</CardTitle>
-          </CardHeader>
-          <CardContent className="text-muted-foreground">
-            <p>Kanban board view for deals coming soon.</p>
-          </CardContent>
-        </Card>
+        <DealsTable
+          refreshTrigger={refreshTrigger}
+          onEditDeal={handleEditDeal}
+        />
+
+        <CreateDealModal
+          open={isCreateModalOpen}
+          onOpenChange={setIsCreateModalOpen}
+          onDealCreated={handleDealCreated}
+          editingDeal={editingDeal}
+        />
       </div>
     </AppLayout>
   )

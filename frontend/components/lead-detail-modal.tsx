@@ -2,7 +2,7 @@
 
 import React from "react"
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   Dialog,
   DialogContent,
@@ -21,8 +21,14 @@ import {
 } from '@/components/ui/select'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Lead } from './leads-table'
 import { toast } from 'sonner'
+import { FileUpload, AttachmentList } from './file-upload'
+import { ActivityTimeline } from './activity-timeline'
+import { LeadScoreCard } from './lead-score'
+import { LeadEnrollments } from './follow-up-sequences'
+import { getFollowUpSequences, getAttachments, getActivityTimeline } from '@/lib/api-service'
 
 interface LeadDetailModalProps {
   lead: Lead | null
@@ -41,6 +47,41 @@ export function LeadDetailModal({
 }: LeadDetailModalProps) {
   const [formData, setFormData] = useState<Partial<Lead> | null>(lead)
   const [isLoading, setIsLoading] = useState(false)
+  const [activeTab, setActiveTab] = useState('details')
+  const [sequences, setSequences] = useState<any[]>([])
+  const [attachments, setAttachments] = useState<any[]>([])
+  const [activities, setActivities] = useState<any[]>([])
+
+  useEffect(() => {
+    if (lead && isOpen) {
+      setFormData(lead)
+      fetchRelatedData()
+    }
+  }, [lead, isOpen])
+
+  const fetchRelatedData = async () => {
+    if (!lead?.id) return
+    
+    try {
+      const [seqData, attachData, actData] = await Promise.allSettled([
+        getFollowUpSequences(),
+        getAttachments('lead', lead.id),
+        getActivityTimeline('lead', lead.id),
+      ])
+      
+      if (seqData.status === 'fulfilled') {
+        setSequences((seqData.value as any).sequences || [])
+      }
+      if (attachData.status === 'fulfilled') {
+        setAttachments((attachData.value as any).attachments || [])
+      }
+      if (actData.status === 'fulfilled') {
+        setActivities((actData.value as any).activities || [])
+      }
+    } catch (error) {
+      console.error('Failed to fetch related data:', error)
+    }
+  }
 
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -86,12 +127,22 @@ export function LeadDetailModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Lead Details</DialogTitle>
+          <DialogTitle>Lead: {lead.name}</DialogTitle>
         </DialogHeader>
 
-        <div className="grid gap-4 py-4">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid w-full grid-cols-5">
+            <TabsTrigger value="details">Details</TabsTrigger>
+            <TabsTrigger value="activity">Activity</TabsTrigger>
+            <TabsTrigger value="files">Files</TabsTrigger>
+            <TabsTrigger value="followups">Follow-ups</TabsTrigger>
+            <TabsTrigger value="score">Score</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="details" className="mt-4">
+            <div className="grid gap-4 py-4">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="name">Name</Label>
@@ -179,7 +230,48 @@ export function LeadDetailModal({
               </p>
             </div>
           </div>
-        </div>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="activity" className="mt-4">
+            <ActivityTimeline
+              activities={activities}
+              loading={false}
+            />
+          </TabsContent>
+
+          <TabsContent value="files" className="mt-4 space-y-4">
+            <FileUpload
+              entityType="lead"
+              entityId={lead.id}
+              onUploadComplete={(attachment) => {
+                setAttachments((prev) => [...prev, attachment])
+              }}
+            />
+            <AttachmentList
+              attachments={attachments}
+              onDelete={(id) => {
+                setAttachments((prev) => prev.filter((a) => a.id !== id))
+              }}
+            />
+          </TabsContent>
+
+          <TabsContent value="followups" className="mt-4">
+            <LeadEnrollments
+              leadId={lead.id}
+              sequences={sequences}
+              onRefresh={fetchRelatedData}
+            />
+          </TabsContent>
+
+          <TabsContent value="score" className="mt-4">
+            <LeadScoreCard
+              score={(lead as any).score || 50}
+              previousScore={(lead as any).previousScore}
+              lastUpdated={lead.updatedAt ? new Date(lead.updatedAt).toLocaleDateString() : undefined}
+            />
+          </TabsContent>
+        </Tabs>
 
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>

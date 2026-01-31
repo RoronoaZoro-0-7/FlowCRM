@@ -3,7 +3,9 @@
 import { useAuth } from '@/contexts/auth-context'
 import { useSocket } from '@/contexts/socket-context'
 import Link from 'next/link'
+import Image from 'next/image'
 import { usePathname } from 'next/navigation'
+import { useTheme } from 'next-themes'
 import { Button } from '@/components/ui/button'
 import {
   LayoutDashboard,
@@ -16,9 +18,11 @@ import {
   Menu,
   X,
   Building2,
+  Calendar,
+  Phone,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { ThemeToggle } from '@/components/theme-toggle'
 
 const navItems = [
@@ -26,6 +30,7 @@ const navItems = [
   { href: '/leads', label: 'Leads', icon: Users },
   { href: '/deals', label: 'Deals', icon: Zap },
   { href: '/tasks', label: 'Tasks', icon: CheckSquare },
+  { href: '/calendar', label: 'Calendar', icon: Calendar },
   { href: '/notifications', label: 'Notifications', icon: Bell, showBadge: true },
 ]
 
@@ -44,9 +49,19 @@ export function SidebarNav() {
   const { user, logout } = useAuth()
   const { unreadCount } = useSocket()
   const pathname = usePathname()
+  const { resolvedTheme } = useTheme()
   const [isOpen, setIsOpen] = useState(false)
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   if (!user) return null
+
+  const logoSrc = mounted && resolvedTheme === 'dark' 
+    ? '/flowcrm-logo-dark.svg' 
+    : '/flowcrm-logo.svg'
 
   const isOwner = user.role === 'OWNER'
   const isAdmin = user.role === 'ADMIN'
@@ -113,9 +128,18 @@ export function SidebarNav() {
       {/* Desktop Sidebar */}
       <aside className="hidden h-screen w-64 border-r border-border bg-card/50 backdrop-blur-sm flex-col lg:flex sticky top-0">
         <div className="p-6 border-b border-border">
-          <h1 className="text-xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
-            FlowCRM
-          </h1>
+          <div className="flex items-center gap-2">
+            <Image 
+              src={logoSrc} 
+              alt="FlowCRM" 
+              width={36} 
+              height={36}
+              className="rounded-lg"
+            />
+            <h1 className="text-xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+              FlowCRM
+            </h1>
+          </div>
           <div className="mt-4 flex items-center gap-3">
             <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
               <span className="text-sm font-semibold text-primary">
@@ -138,9 +162,18 @@ export function SidebarNav() {
 
       {/* Mobile Sidebar Toggle */}
       <div className="sticky top-0 z-40 flex items-center justify-between border-b border-border bg-background/95 backdrop-blur-sm px-4 py-3 lg:hidden">
-        <h1 className="text-lg font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
-          FlowCRM
-        </h1>
+        <div className="flex items-center gap-2">
+          <Image 
+            src={logoSrc} 
+            alt="FlowCRM" 
+            width={28} 
+            height={28}
+            className="rounded-md"
+          />
+          <h1 className="text-lg font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+            FlowCRM
+          </h1>
+        </div>
         <div className="flex items-center gap-2">
           <ThemeToggle />
           <Button

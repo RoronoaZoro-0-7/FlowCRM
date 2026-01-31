@@ -41,12 +41,17 @@
   },
   "dependencies": {
     "@prisma/client": "^6.19.2",
+    "@types/multer": "^2.0.0",
+    "@types/uuid": "^10.0.0",
     "bullmq": "^5.67.1",
+    "cloudinary": "^2.9.0",
+    "multer": "^2.0.2",
     "nodemailer": "^7.0.12",
     "prisma": "^6.19.2",
     "qrcode": "^1.5.4",
     "rate-limiter-flexible": "^9.0.1",
     "socket.io": "^4.8.3",
-    "speakeasy": "^2.0.0"
+    "speakeasy": "^2.0.0",
+    "uuid": "^13.0.0"
   }
 }

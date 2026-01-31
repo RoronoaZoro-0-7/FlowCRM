@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { toast } from 'sonner'
 import Link from 'next/link'
+import Image from 'next/image'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { TrendingUp, Users, BarChart3, Shield } from 'lucide-react'
 
@@ -77,8 +78,19 @@ export default function LoginPage() {
         </div>
         
         <div className="relative z-10">
-          <h1 className="text-4xl font-bold">FlowCRM</h1>
-          <p className="mt-2 text-primary-foreground/80">Enterprise CRM Platform</p>
+          <div className="flex items-center gap-3">
+            <Image 
+              src="/flowcrm-logo-dark.svg" 
+              alt="FlowCRM" 
+              width={48} 
+              height={48}
+              className="rounded-xl bg-white/10 p-1"
+            />
+            <div>
+              <h1 className="text-4xl font-bold">FlowCRM</h1>
+              <p className="text-primary-foreground/80">Enterprise CRM Platform</p>
+            </div>
+          </div>
         </div>
         
         <div className="relative z-10 space-y-8">

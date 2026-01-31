@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none">
+  <defs>
+    <linearGradient id="birdGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#F59E0B"/>
+      <stop offset="50%" style="stop-color:#EF4444"/>
+      <stop offset="100%" style="stop-color:#10B981"/>
+    </linearGradient>
+    <linearGradient id="wingGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#10B981"/>
+      <stop offset="100%" style="stop-color:#059669"/>
+    </linearGradient>
+  </defs>
+  
+  <!-- Bird body - hummingbird shape -->
+  <ellipse cx="85" cy="100" rx="45" ry="35" fill="url(#birdGradient)"/>
+  
+  <!-- Bird head -->
+  <circle cx="125" cy="85" r="25" fill="#F59E0B"/>
+  
+  <!-- Long beak -->
+  <path d="M145 85 L190 75 L145 80 Z" fill="#374151"/>
+  
+  <!-- Eye -->
+  <circle cx="135" cy="80" r="4" fill="#1F2937"/>
+  <circle cx="136" cy="79" r="1.5" fill="white"/>
+  
+  <!-- Wing (spread) -->
+  <path d="M60 85 Q20 50 30 90 Q10 70 25 100 Q5 85 20 115 Q30 130 70 110 Z" fill="url(#wingGradient)"/>
+  
+  <!-- Tail feathers -->
+  <path d="M40 100 Q10 120 15 145 Q30 130 45 115 Z" fill="#10B981"/>
+  <path d="M45 105 Q20 130 25 155 Q40 135 55 118 Z" fill="#059669"/>
+  <path d="M50 108 Q30 140 40 165 Q55 140 65 120 Z" fill="#047857"/>
+  
+  <!-- Belly highlight -->
+  <ellipse cx="90" cy="110" rx="25" ry="15" fill="#FBBF24" opacity="0.6"/>
+</svg>

@@ -13,6 +13,210 @@
 5. **Performance at Scale** - Redis caching, background jobs, optimized queries
 6. **Security First** - JWT tokens, 2FA support, audit logging, secure cookies
 
+---
+
+## ⭐ Complete Feature Overview
+
+### 🔐 Authentication & Security Features
+
+| Feature | Description | Location |
+|---------|-------------|----------|
+| **JWT Authentication** | Access tokens (15min) + Refresh tokens (7 days) in httpOnly cookies | `Backend/utils/generateToken.ts` |
+| **Two-Factor Auth (2FA)** | TOTP-based 2FA using Google Authenticator/Authy | `Backend/controllers/twoFactorController.ts` |
+| **Rate Limiting** | Redis-backed rate limiting (5 login attempts/min, 100 API/min) | `Backend/middleware/rateLimiter.ts` |
+| **Role-Based Access** | OWNER > ADMIN > MANAGER > SALES hierarchy | `Backend/middleware/isRole.ts` |
+| **Secure Cookies** | httpOnly, secure, sameSite cookies for tokens | `Backend/controllers/authController.ts` |
+| **Password Hashing** | bcrypt with salt rounds | `Backend/controllers/authController.ts` |
+| **Token Rotation** | Refresh tokens are rotated on each use | `Backend/controllers/authController.ts` |
+| **Auto Token Cleanup** | Daily cleanup of expired tokens via BullMQ | `Backend/services/tokenCleanupService.ts` |
+
+### 👥 User Management Features
+
+| Feature | Description | Frontend | Backend |
+|---------|-------------|----------|---------|
+| **User Registration** | OWNER creates org, ADMIN adds employees | `frontend/app/users/page.tsx` | `POST /api/users` |
+| **User Profiles** | View/edit name, email, role, avatar | `frontend/app/settings/page.tsx` | `PUT /api/users/:id` |
+| **Role Management** | Change user roles (ADMIN+ only) | Users page actions | `PUT /api/users/:id` |
+| **User Deletion** | Soft/hard delete users | Users page actions | `DELETE /api/users/:id` |
+| **Team Directory** | View all org members | `frontend/app/users/page.tsx` | `GET /api/users` |
+| **Password Change** | Secure password updates | Settings page | `PUT /api/auth/change-password` |
+| **2FA Setup** | Enable/disable with QR code | Settings page | `/api/2fa/setup`, `/verify`, `/disable` |
+
+### 📊 Lead Management Features
+
+| Feature | Description | Frontend | Backend |
+|---------|-------------|----------|---------|
+| **Lead Creation** | Add leads with contact info, value, source | Create Lead Modal | `POST /api/leads` |
+| **Lead List** | Paginated, searchable, filterable list | `frontend/app/leads/page.tsx` | `GET /api/leads` |
+| **Lead Details** | Full lead info with activity timeline | `frontend/app/leads/[id]/page.tsx` | `GET /api/leads/:id` |
+| **Lead Status Pipeline** | NEW → CONTACTED → QUALIFIED → PROPOSAL → WON/LOST | Status badges/dropdowns | `PUT /api/leads/:id` |
+| **Lead Assignment** | Assign leads to team members | Assignee dropdown | `PUT /api/leads/:id` |
+| **Lead Conversion** | Convert qualified leads to deals | Convert button | `POST /api/leads/:id/convert` |
+| **Lead Sources** | Track where leads come from | Source field | Stored in DB |
+| **Lead Value** | Estimated deal value | Value field | `value` column |
+| **Activity Tracking** | Notes, calls, emails, meetings on leads | Activity feed | `POST /api/leads/:id/activities` |
+| **Lead Search** | Search by name, email, company | Search input | Query params |
+| **Lead Filtering** | Filter by status, source, owner | Filter dropdowns | Query params |
+
+### 💼 Deal Management Features
+
+| Feature | Description | Frontend | Backend |
+|---------|-------------|----------|---------|
+| **Deal Creation** | Create deals (manual or from lead) | Create Deal Modal | `POST /api/deals` |
+| **Deal Pipeline** | QUALIFICATION → PROPOSAL → NEGOTIATION → WON/LOST | Pipeline board/list | `PUT /api/deals/:id` |
+| **Deal Value** | Track deal monetary value | Value field | `value` column |
+| **Probability** | Win probability based on stage | Auto/manual | `probability` column |
+| **Expected Close** | Target close date | Date picker | `expectedClose` column |
+| **Deal Assignment** | Assign deals to sales reps | Assignee dropdown | `assignedToId` |
+| **Lead Association** | Link deals to source leads | Lead dropdown | `leadId` |
+| **Stage Tracking** | Automatic stage change notifications | Real-time updates | Event emitter |
+
+### ✅ Task Management Features
+
+| Feature | Description | Frontend | Backend |
+|---------|-------------|----------|---------|
+| **Task Creation** | Create tasks with title, description, due date | Create Task Modal | `POST /api/tasks` |
+| **Task Assignment** | Assign tasks to team members | Assignee dropdown | `assignedToId` |
+| **Task Priorities** | LOW, MEDIUM, HIGH priority levels | Priority badges | `priority` enum |
+| **Task Status** | TODO → IN_PROGRESS → DONE | Status dropdown | `status` enum |
+| **Due Dates** | Set task deadlines | Date picker | `dueDate` column |
+| **Task Filtering** | Filter by status, priority, assignee | Filter buttons | Query params |
+| **Overdue Alerts** | Highlight overdue tasks | Red styling | Dashboard query |
+| **Task Notifications** | Notify on assignment/completion | Real-time + toast | Event emitter |
+| **Lead/Deal Tasks** | Link tasks to leads or deals | Association fields | `leadId`, `dealId` |
+
+### 🔔 Notification System Features
+
+| Feature | Description | Frontend | Backend |
+|---------|-------------|----------|---------|
+| **Real-time Notifications** | Instant push via Socket.IO | Toast + bell icon | `newNotification` event |
+| **Notification Types** | TASK_ASSIGNED, LEAD_ASSIGNED, DEAL_UPDATED, USER_ADDED, SYSTEM | Type icons | `NotificationType` enum |
+| **Unread Count** | Badge showing unread count | Bell badge | `GET /api/notifications/unread-count` |
+| **Mark as Read** | Mark individual as read | Click notification | `PUT /api/notifications/:id/read` |
+| **Mark All Read** | Bulk mark all as read | "Mark all" button | `PUT /api/notifications/read-all` |
+| **Notification Links** | Deep links to related entity | Click to navigate | `link` field |
+| **Notification History** | View past notifications | Notifications page | `GET /api/notifications` |
+
+### 📈 Dashboard & Analytics Features
+
+| Feature | Description | Frontend | Backend |
+|---------|-------------|----------|---------|
+| **Stats Cards** | Total leads, deals, tasks, revenue | `StatsCard` components | `GET /api/dashboard/stats` |
+| **Weekly Charts** | Leads/deals/tasks by week | Bar/Line charts | `GET /api/dashboard/weekly` |
+| **Pipeline Chart** | Deal distribution by stage | Pie chart | `GET /api/dashboard/pipeline` |
+| **Lead Sources Chart** | Lead distribution by source | Bar chart | `GET /api/dashboard/lead-sources` |
+| **Team Performance** | Sales by team member (Admin+) | Horizontal bar | `GET /api/dashboard/team-performance` |
+| **Activity Feed** | Recent org-wide activities | Activity list | `GET /api/dashboard/activity` |
+| **Overdue Tasks** | List of overdue tasks | Task list | `GET /api/dashboard/overdue-tasks` |
+| **Conversion Rate** | Lead-to-deal conversion % | Stats card | Calculated metric |
+
+### 🏢 Organization Features
+
+| Feature | Description | Frontend | Backend |
+|---------|-------------|----------|---------|
+| **Org Creation** | Create org on registration | Registration flow | `POST /api/auth/register` |
+| **Org Settings** | Update org name, settings | Org settings page | `PUT /api/organizations/:id` |
+| **Multi-tenancy** | Complete data isolation between orgs | All queries filtered | `orgId` on all models |
+| **Team Management** | View/manage org members | Users page | `GET /api/users` |
+
+### 📝 Activity Tracking Features
+
+| Feature | Description | Frontend | Backend |
+|---------|-------------|----------|---------|
+| **Activity Types** | NOTE, CALL, EMAIL, MEETING | Type dropdown | `ActivityType` enum |
+| **Activity Timeline** | Chronological activity feed | Activity feed component | `GET /api/leads/:id/activities` |
+| **Activity Creation** | Log activities on leads | Activity form | `POST /api/leads/:id/activities` |
+| **Activity Icons** | Visual icons per type | Icon components | Frontend only |
+
+### 📞 Call Logging Features
+
+| Feature | Description | Frontend | Backend |
+|---------|-------------|----------|---------|
+| **Call Logs** | Record call details | Call log form | `POST /api/call-logs` |
+| **Call Duration** | Track call length | Duration field | `duration` column |
+| **Call Outcome** | Track call results | Outcome dropdown | `outcome` field |
+| **Call Notes** | Add notes to calls | Notes textarea | `notes` field |
+
+### 📅 Calendar Events Features
+
+| Feature | Description | Frontend | Backend |
+|---------|-------------|----------|---------|
+| **Event Creation** | Create meetings, reminders | Calendar modal | `POST /api/calendar-events` |
+| **Event Types** | MEETING, CALL, TASK, REMINDER | Type dropdown | `eventType` enum |
+| **Date/Time** | Start and end times | DateTime pickers | `startTime`, `endTime` |
+| **Attendees** | Link to users | User selection | Relation |
+
+### 🔄 Follow-up Sequences Features
+
+| Feature | Description | Frontend | Backend |
+|---------|-------------|----------|---------|
+| **Sequence Creation** | Create automated follow-up sequences | Sequence builder | `POST /api/follow-up-sequences` |
+| **Sequence Steps** | Define multiple steps | Step editor | `SequenceStep` model |
+| **Delay Settings** | Days between steps | Delay input | `delayDays` field |
+| **Activation** | Active/inactive toggle | Toggle switch | `active` field |
+
+### 🎨 UI/UX Features
+
+| Feature | Description | Implementation |
+|---------|-------------|----------------|
+| **Dark/Light Theme** | System-aware theming | `next-themes` provider |
+| **Responsive Design** | Mobile-first responsive | Tailwind breakpoints |
+| **Sidebar Navigation** | Collapsible sidebar | Custom component |
+| **Data Tables** | Sortable, searchable tables | TanStack Table + shadcn |
+| **Modals** | Create/edit dialogs | shadcn Dialog |
+| **Toast Notifications** | Success/error toasts | Sonner library |
+| **Loading States** | Skeleton loaders | shadcn Skeleton |
+| **Form Validation** | Client-side validation | React Hook Form + Zod |
+| **Dropdowns** | Select/combobox components | shadcn Select/Combobox |
+| **Date Pickers** | Calendar date selection | shadcn Calendar |
+
+### 🔍 Search & Filter Features
+
+| Feature | Description | Implementation |
+|---------|-------------|----------------|
+| **Global Search** | Search across entities | Command palette |
+| **Lead Filters** | Status, source, owner | Filter dropdowns |
+| **Deal Filters** | Stage, owner, value range | Filter dropdowns |
+| **Task Filters** | Status, priority, assignee | Filter buttons |
+| **Saved Filters** | Save filter presets | `FilterPreset` model |
+| **Custom Fields** | Org-specific custom fields | `CustomField` model |
+
+### 📊 Reporting Features
+
+| Feature | Description | Implementation |
+|---------|-------------|----------------|
+| **Dashboard Metrics** | Real-time KPIs | Dashboard page |
+| **Weekly Trends** | Week-over-week charts | Chart components |
+| **Pipeline Analysis** | Deal stage distribution | Pipeline chart |
+| **Source Analysis** | Lead source effectiveness | Sources chart |
+| **Team Metrics** | Individual performance | Team chart (Admin+) |
+
+### 🔐 Audit & Compliance Features
+
+| Feature | Description | Implementation |
+|---------|-------------|----------------|
+| **Audit Logs** | Track all user actions | `AuditLog` model |
+| **Login Tracking** | Log all login attempts | Auth controller |
+| **Change History** | Track entity changes | Event emitter |
+| **IP Logging** | Record IP addresses | Middleware |
+
+### 📧 Email Features
+
+| Feature | Description | Implementation |
+|---------|-------------|----------------|
+| **Welcome Emails** | Sent on user creation | BullMQ email worker |
+| **Password Reset** | Secure reset links | Email template |
+| **Task Assignment** | Notify on assignment | Email template |
+| **HTML Templates** | Styled email templates | `utils/emailTemplate.ts` |
+
+### 🔗 Integration Features
+
+| Feature | Description | Implementation |
+|---------|-------------|----------------|
+| **Webhook Logs** | Track webhook deliveries | `WebhookLog` model |
+| **External Integrations** | Integration configs | `Integration` model |
+| **API Keys** | Manage API access | Future feature |
+
 ### 🛠️ Tech Stack
 
 | Layer | Technology |
@@ -2358,6 +2562,817 @@ if (response.status === 401 && retry) {
 ## 📝 License
 
 This project is for educational and demonstration purposes.
+
+---
+
+*Last updated: January 2026*
+
+---
+
+## 📦 NPM Modules & Libraries Used
+
+### Backend Dependencies
+
+| Module | Version | Purpose | Usage |
+|--------|---------|---------|-------|
+| **express** | ^4.18 | Web framework | HTTP server, routing, middleware |
+| **prisma** | ^5.x | ORM | Database schema, migrations, queries |
+| **@prisma/client** | ^5.x | DB Client | Type-safe database operations |
+| **socket.io** | ^4.x | WebSocket | Real-time bidirectional communication |
+| **ioredis** | ^5.x | Redis client | Caching, rate limiting, BullMQ |
+| **bullmq** | ^4.x | Job queue | Background tasks, scheduled jobs |
+| **jsonwebtoken** | ^9.x | JWT | Access/refresh token generation |
+| **bcrypt** | ^5.x | Hashing | Password hashing |
+| **speakeasy** | ^2.x | TOTP | 2FA code generation/verification |
+| **qrcode** | ^1.x | QR codes | 2FA setup QR generation |
+| **nodemailer** | ^6.x | Email | SMTP email sending |
+| **cookie-parser** | ^1.x | Cookies | Parse request cookies |
+| **cors** | ^2.x | CORS | Cross-origin requests |
+| **rate-limiter-flexible** | ^2.x | Rate limit | Request throttling |
+| **dotenv** | ^16.x | Config | Environment variables |
+
+### Frontend Dependencies
+
+| Module | Version | Purpose | Usage |
+|--------|---------|---------|-------|
+| **next** | ^16.x | Framework | React framework, routing, SSR |
+| **react** | ^19.x | UI Library | Component rendering |
+| **typescript** | ^5.x | Type safety | Static typing |
+| **tailwindcss** | ^4.x | Styling | Utility-first CSS |
+| **@radix-ui/react-*** | Various | Primitives | Accessible UI primitives |
+| **socket.io-client** | ^4.x | WebSocket | Socket.IO client |
+| **sonner** | ^1.x | Toasts | Toast notifications |
+| **lucide-react** | ^0.x | Icons | SVG icon components |
+| **next-themes** | ^0.x | Theming | Dark/light mode |
+| **recharts** | ^2.x | Charts | Dashboard visualizations |
+| **@tanstack/react-table** | ^8.x | Tables | Data table handling |
+| **react-hook-form** | ^7.x | Forms | Form state management |
+| **zod** | ^3.x | Validation | Schema validation |
+| **date-fns** | ^3.x | Dates | Date formatting/manipulation |
+| **class-variance-authority** | ^0.x | Styling | Component variants |
+| **clsx** | ^2.x | Classes | Conditional className |
+| **tailwind-merge** | ^2.x | Styling | Merge Tailwind classes |
+
+---
+
+## 🔧 Backend Code Architecture
+
+### Express Server Setup (index.ts)
+
+```typescript
+import express from "express";
+import { createServer } from "http";
+import { Server } from "socket.io";
+import cookieParser from "cookie-parser";
+import cors from "cors";
+import dotenv from "dotenv";
+
+dotenv.config();
+
+const app = express();
+const httpServer = createServer(app);
+
+// Socket.IO with CORS
+const io = new Server(httpServer, {
+    cors: {
+        origin: process.env.CLIENT_URL || "http://localhost:3001",
+        credentials: true,
+    },
+});
+
+// Make io accessible in controllers
+app.set("io", io);
+
+// Middleware
+app.use(cors({
+    origin: process.env.CLIENT_URL || "http://localhost:3001",
+    credentials: true,
+}));
+app.use(express.json());
+app.use(cookieParser());
+
+// Routes
+app.use("/api/auth", authRoutes);
+app.use("/api/users", userRoutes);
+app.use("/api/leads", leadRoutes);
+app.use("/api/deals", dealRoutes);
+app.use("/api/tasks", taskRoutes);
+app.use("/api/notifications", notificationRoutes);
+app.use("/api/dashboard", dashboardRoutes);
+app.use("/api/2fa", twoFactorRoutes);
+
+// Socket.IO connection handling
+io.on("connection", (socket) => {
+    socket.on("joinRoom", (userId) => socket.join(`user:${userId}`));
+    socket.on("joinOrg", (orgId) => socket.join(`org:${orgId}`));
+    socket.on("disconnect", () => console.log("Client disconnected"));
+});
+
+// Start server
+const PORT = process.env.PORT || 3000;
+httpServer.listen(PORT, () => {
+    console.log(`🚀 Server running on port ${PORT}`);
+    startAllWorkers(); // Start BullMQ workers
+    scheduleTokenCleanup(); // Schedule daily cleanup
+});
+```
+
+### Controller Pattern Example (leadController.ts)
+
+```typescript
+import { Request, Response } from "express";
+import prisma from "../config/client";
+import { tryCatch } from "../utils/tryCatch";
+import { emitEvent } from "../services/eventEmitter";
+import { invalidateDashboardCache } from "../services/cacheService";
+
+// Get all leads with filtering, pagination, and search
+export const getLeads = tryCatch(async (req: Request, res: Response) => {
+    const { userId, orgId, role } = req.user!;
+    const { status, search, page = 1, limit = 20 } = req.query;
+
+    // SALES users see only their leads
+    const whereClause: any = {
+        orgId,
+        ...(role === "SALES" && { ownerId: userId }),
+        ...(status && { status }),
+        ...(search && {
+            OR: [
+                { name: { contains: search, mode: "insensitive" } },
+                { email: { contains: search, mode: "insensitive" } },
+                { company: { contains: search, mode: "insensitive" } },
+            ],
+        }),
+    };
+
+    const [leads, total] = await Promise.all([
+        prisma.lead.findMany({
+            where: whereClause,
+            include: {
+                owner: { select: { id: true, name: true, email: true } },
+                assignedTo: { select: { id: true, name: true, email: true } },
+            },
+            skip: (Number(page) - 1) * Number(limit),
+            take: Number(limit),
+            orderBy: { createdAt: "desc" },
+        }),
+        prisma.lead.count({ where: whereClause }),
+    ]);
+
+    return res.json({
+        leads,
+        pagination: {
+            page: Number(page),
+            limit: Number(limit),
+            total,
+            totalPages: Math.ceil(total / Number(limit)),
+        },
+    });
+});
+
+// Create a new lead
+export const createLead = tryCatch(async (req: Request, res: Response) => {
+    const { userId, orgId } = req.user!;
+    const { name, email, company, phone, value, source, assignedToId } = req.body;
+
+    const lead = await prisma.lead.create({
+        data: {
+            name,
+            email,
+            company,
+            phone,
+            value: value || 0,
+            source,
+            ownerId: userId,
+            assignedToId: assignedToId || userId,
+            orgId,
+        },
+        include: {
+            owner: { select: { id: true, name: true } },
+            assignedTo: { select: { id: true, name: true } },
+        },
+    });
+
+    // Emit event for notifications, audit logging, and real-time updates
+    await emitEvent(req.app, "lead:created", lead, orgId, userId);
+    await invalidateDashboardCache(orgId);
+
+    return res.status(201).json(lead);
+});
+```
+
+### TryCatch Utility (utils/tryCatch.ts)
+
+```typescript
+import { Request, Response, NextFunction } from "express";
+
+type AsyncHandler = (req: Request, res: Response, next: NextFunction) => Promise<any>;
+
+export const tryCatch = (fn: AsyncHandler) => {
+    return (req: Request, res: Response, next: NextFunction) => {
+        Promise.resolve(fn(req, res, next)).catch((error) => {
+            console.error("Error:", error);
+            return res.status(500).json({
+                message: error.message || "Internal server error",
+            });
+        });
+    };
+};
+```
+
+### Authentication Middleware (middleware/isAuth.ts)
+
+```typescript
+import { Request, Response, NextFunction } from "express";
+import jwt from "jsonwebtoken";
+
+interface JwtPayload {
+    userId: string;
+    role: string;
+    orgId: string;
+}
+
+declare global {
+    namespace Express {
+        interface Request {
+            user?: JwtPayload;
+        }
+    }
+}
+
+const isAuth = (req: Request, res: Response, next: NextFunction) => {
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader?.startsWith("Bearer ")) {
+        return res.status(401).json({ message: "No token provided" });
+    }
+
+    const token = authHeader.split(" ")[1];
+
+    try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET!) as JwtPayload;
+        req.user = decoded;
+        next();
+    } catch (error) {
+        if (error instanceof jwt.TokenExpiredError) {
+            return res.status(401).json({ message: "Token expired" });
+        }
+        return res.status(401).json({ message: "Invalid token" });
+    }
+};
+
+export default isAuth;
+```
+
+---
+
+## 🎨 Frontend Code Architecture
+
+### Auth Context (contexts/auth-context.tsx)
+
+```typescript
+"use client";
+import { createContext, useContext, useState, useEffect, useCallback, useRef } from "react";
+import { setTokenHandlers } from "@/lib/api-service";
+
+interface User {
+    id: string;
+    name: string;
+    email: string;
+    role: string;
+    orgId: string;
+    twoFactorEnabled: boolean;
+}
+
+interface AuthContextType {
+    user: User | null;
+    accessToken: string | null;
+    login: (email: string, password: string, twoFactorToken?: string) => Promise<LoginResult>;
+    logout: () => Promise<void>;
+    isLoading: boolean;
+}
+
+const AuthContext = createContext<AuthContextType | null>(null);
+
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+    const [user, setUser] = useState<User | null>(null);
+    const [accessToken, setAccessToken] = useState<string | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
+    const accessTokenRef = useRef<string | null>(null);
+
+    // Sync ref with state
+    useEffect(() => {
+        accessTokenRef.current = accessToken;
+    }, [accessToken]);
+
+    // Token refresh function
+    const refreshAccessToken = useCallback(async () => {
+        try {
+            const response = await fetch(`${API_BASE}/auth/refresh-token`, {
+                method: "POST",
+                credentials: "include",
+            });
+
+            if (!response.ok) {
+                setAccessToken(null);
+                setUser(null);
+                return null;
+            }
+
+            const data = await response.json();
+            setAccessToken(data.accessToken);
+            accessTokenRef.current = data.accessToken;
+            return data.accessToken;
+        } catch {
+            return null;
+        }
+    }, []);
+
+    // Set up token handlers for API service
+    useEffect(() => {
+        setTokenHandlers(
+            () => accessTokenRef.current,
+            refreshAccessToken
+        );
+    }, [refreshAccessToken]);
+
+    // Auto-refresh tokens every 14 minutes
+    useEffect(() => {
+        if (user) {
+            const interval = setInterval(refreshAccessToken, 14 * 60 * 1000);
+            return () => clearInterval(interval);
+        }
+    }, [user, refreshAccessToken]);
+
+    // Login function
+    const login = async (email: string, password: string, twoFactorToken?: string) => {
+        const response = await fetch(`${API_BASE}/auth/login`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({ email, password, twoFactorToken }),
+        });
+
+        const data = await response.json();
+
+        if (data.requires2FA) {
+            return { requires2FA: true };
+        }
+
+        if (response.ok) {
+            setAccessToken(data.accessToken);
+            setUser(data.user);
+            localStorage.setItem("user", JSON.stringify(data.user));
+            return { success: true };
+        }
+
+        throw new Error(data.message);
+    };
+
+    // Logout function
+    const logout = async () => {
+        await fetch(`${API_BASE}/auth/logout`, {
+            method: "POST",
+            credentials: "include",
+        });
+        setAccessToken(null);
+        setUser(null);
+        localStorage.removeItem("user");
+    };
+
+    return (
+        <AuthContext.Provider value={{ user, accessToken, login, logout, isLoading }}>
+            {children}
+        </AuthContext.Provider>
+    );
+}
+
+export const useAuth = () => {
+    const context = useContext(AuthContext);
+    if (!context) throw new Error("useAuth must be used within AuthProvider");
+    return context;
+};
+```
+
+### API Service (lib/api-service.ts)
+
+```typescript
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api";
+
+let getAccessToken: () => string | null = () => null;
+let refreshToken: () => Promise<string | null> = async () => null;
+
+export function setTokenHandlers(
+    getter: () => string | null,
+    refresher: () => Promise<string | null>
+) {
+    getAccessToken = getter;
+    refreshToken = refresher;
+}
+
+export async function makeRequest<T>(
+    endpoint: string,
+    options: RequestInit = {},
+    retry = true
+): Promise<T> {
+    const token = getAccessToken();
+
+    const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+        ...(options.headers as Record<string, string>),
+    };
+
+    if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+    }
+
+    const response = await fetch(`${API_BASE}${endpoint}`, {
+        ...options,
+        headers,
+        credentials: "include",
+    });
+
+    // Handle 401 - try to refresh token and retry
+    if (response.status === 401 && retry) {
+        const newToken = await refreshToken();
+        if (newToken) {
+            return makeRequest(endpoint, options, false);
+        }
+        throw new Error("Session expired. Please login again.");
+    }
+
+    if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || `API error: ${response.status}`);
+    }
+
+    return response.json();
+}
+
+// Convenience methods
+export const api = {
+    get: <T>(endpoint: string) => makeRequest<T>(endpoint),
+    post: <T>(endpoint: string, data: any) => makeRequest<T>(endpoint, {
+        method: "POST",
+        body: JSON.stringify(data),
+    }),
+    put: <T>(endpoint: string, data: any) => makeRequest<T>(endpoint, {
+        method: "PUT",
+        body: JSON.stringify(data),
+    }),
+    delete: <T>(endpoint: string) => makeRequest<T>(endpoint, { method: "DELETE" }),
+};
+```
+
+### Socket Context (contexts/socket-context.tsx)
+
+```typescript
+"use client";
+import { createContext, useContext, useEffect, useState } from "react";
+import { io, Socket } from "socket.io-client";
+import { useAuth } from "./auth-context";
+import { toast } from "sonner";
+
+interface SocketContextType {
+    socket: Socket | null;
+    isConnected: boolean;
+    unreadCount: number;
+    setUnreadCount: (count: number) => void;
+}
+
+const SocketContext = createContext<SocketContextType>({
+    socket: null,
+    isConnected: false,
+    unreadCount: 0,
+    setUnreadCount: () => {},
+});
+
+export function SocketProvider({ children }: { children: React.ReactNode }) {
+    const { user } = useAuth();
+    const [socket, setSocket] = useState<Socket | null>(null);
+    const [isConnected, setIsConnected] = useState(false);
+    const [unreadCount, setUnreadCount] = useState(0);
+
+    useEffect(() => {
+        if (!user) return;
+
+        const socketInstance = io(
+            process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:3000",
+            { withCredentials: true }
+        );
+
+        socketInstance.on("connect", () => {
+            setIsConnected(true);
+            socketInstance.emit("joinRoom", user.id);
+            socketInstance.emit("joinOrg", user.orgId);
+        });
+
+        // Handle real-time notifications
+        socketInstance.on("newNotification", (notification) => {
+            setUnreadCount((prev) => prev + 1);
+            toast.info(notification.message, {
+                action: notification.link ? {
+                    label: "View",
+                    onClick: () => window.location.href = notification.link,
+                } : undefined,
+            });
+        });
+
+        // Handle entity updates
+        socketInstance.on("lead:created", (data) => {
+            toast.success(`New lead: ${data.lead.name}`);
+        });
+
+        socketInstance.on("deal:won", (data) => {
+            toast.success(`🎉 Deal won: ${data.deal.title}`);
+        });
+
+        socketInstance.on("task:assigned", (data) => {
+            toast.info(`New task assigned: ${data.task.title}`);
+        });
+
+        socketInstance.on("disconnect", () => setIsConnected(false));
+
+        setSocket(socketInstance);
+
+        return () => {
+            socketInstance.disconnect();
+        };
+    }, [user]);
+
+    return (
+        <SocketContext.Provider value={{ socket, isConnected, unreadCount, setUnreadCount }}>
+            {children}
+        </SocketContext.Provider>
+    );
+}
+
+export const useSocket = () => useContext(SocketContext);
+```
+
+### Protected Route Component
+
+```typescript
+"use client";
+import { useAuth } from "@/contexts/auth-context";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
+
+interface ProtectedRouteProps {
+    children: React.ReactNode;
+    allowedRoles?: string[];
+}
+
+export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) {
+    const { user, isLoading } = useAuth();
+    const router = useRouter();
+
+    useEffect(() => {
+        if (!isLoading && !user) {
+            router.push("/login");
+        }
+
+        if (!isLoading && user && allowedRoles && !allowedRoles.includes(user.role)) {
+            router.push("/dashboard");
+        }
+    }, [user, isLoading, router, allowedRoles]);
+
+    if (isLoading) {
+        return <div>Loading...</div>;
+    }
+
+    if (!user) {
+        return null;
+    }
+
+    if (allowedRoles && !allowedRoles.includes(user.role)) {
+        return null;
+    }
+
+    return <>{children}</>;
+}
+```
+
+### Dashboard Page Example (app/dashboard/page.tsx)
+
+```typescript
+"use client";
+import { useEffect, useState } from "react";
+import { api } from "@/lib/api-service";
+import { StatsCard } from "@/components/stats-card";
+import { DashboardCharts } from "@/components/dashboard-charts";
+import { ActivityFeed } from "@/components/activity-feed";
+import { ProtectedRoute } from "@/components/protected-route";
+
+interface DashboardStats {
+    totalLeads: number;
+    totalDeals: number;
+    totalTasks: number;
+    openTasks: number;
+    dealValueThisMonth: number;
+    conversionRate: number;
+}
+
+export default function DashboardPage() {
+    const [stats, setStats] = useState<DashboardStats | null>(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        async function loadDashboard() {
+            try {
+                const data = await api.get<DashboardStats>("/dashboard/stats");
+                setStats(data);
+            } catch (error) {
+                console.error("Failed to load dashboard:", error);
+            } finally {
+                setLoading(false);
+            }
+        }
+        loadDashboard();
+    }, []);
+
+    if (loading) return <div>Loading dashboard...</div>;
+
+    return (
+        <ProtectedRoute>
+            <div className="space-y-6">
+                <h1 className="text-3xl font-bold">Dashboard</h1>
+                
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                    <StatsCard
+                        title="Total Leads"
+                        value={stats?.totalLeads || 0}
+                        icon={<UsersIcon />}
+                    />
+                    <StatsCard
+                        title="Total Deals"
+                        value={stats?.totalDeals || 0}
+                        icon={<BriefcaseIcon />}
+                    />
+                    <StatsCard
+                        title="Open Tasks"
+                        value={stats?.openTasks || 0}
+                        icon={<CheckCircleIcon />}
+                    />
+                    <StatsCard
+                        title="Revenue This Month"
+                        value={`$${(stats?.dealValueThisMonth || 0).toLocaleString()}`}
+                        icon={<DollarSignIcon />}
+                    />
+                </div>
+
+                <DashboardCharts />
+                <ActivityFeed />
+            </div>
+        </ProtectedRoute>
+    );
+}
+```
+
+---
+
+## 🗄️ Database Seed Data Summary
+
+### Organizations (4)
+- **FlowCRM** - Main demo company (15 users)
+- **Acme Corporation** - Enterprise client (5 users)
+- **TechStart Inc** - Startup client (4 users)
+- **Global Solutions** - International client (3 users)
+
+### Users (27 total)
+| Organization | Roles | Count |
+|--------------|-------|-------|
+| FlowCRM | 1 OWNER, 2 ADMIN, 3 MANAGER, 9 SALES | 15 |
+| Acme Corp | 1 OWNER, 1 ADMIN, 1 MANAGER, 2 SALES | 5 |
+| TechStart | 1 OWNER, 1 ADMIN, 2 SALES | 4 |
+| Global Solutions | 1 OWNER, 1 ADMIN, 1 SALES | 3 |
+
+### Data Volume
+| Entity | Count |
+|--------|-------|
+| Leads | 38 |
+| Deals | 30 |
+| Tasks | 63 |
+| Activities | 80 |
+| Notifications | 79 |
+| Call Logs | 25 |
+| Calendar Events | 20 |
+| Custom Fields | 3 |
+| Follow-up Sequences | 3 |
+| Filter Presets | 3 |
+| Audit Logs | 27 |
+
+### Login Credentials (All passwords: `password`)
+
+**FlowCRM Users:**
+- admin@flowcrm.com (OWNER)
+- sarah.johnson@flowcrm.com (ADMIN)
+- mike.chen@flowcrm.com (MANAGER)
+- emma.wilson@flowcrm.com (SALES)
+
+**Other Organizations:**
+- owner@acme.com (OWNER)
+- ceo@techstart.io (OWNER)
+- admin@globalsolutions.co.uk (OWNER)
+
+---
+
+## 🚀 Quick Start Commands
+
+```bash
+# Clone and install
+git clone <repo>
+cd FlowCRM
+
+# Backend setup
+cd Backend
+npm install
+cp .env.example .env  # Configure your env vars
+npx prisma generate
+npx prisma db push
+npx prisma db seed    # Load demo data
+npm run dev           # Starts on :3000
+
+# Frontend setup (new terminal)
+cd frontend
+npm install
+cp .env.example .env  # Set NEXT_PUBLIC_API_URL
+npm run dev           # Starts on :3001
+```
+
+---
+
+## 📚 API Endpoints Reference
+
+### Authentication
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| POST | `/api/auth/register` | No | Create org + owner |
+| POST | `/api/auth/login` | No | Login (returns tokens) |
+| POST | `/api/auth/refresh-token` | Cookie | Get new access token |
+| POST | `/api/auth/logout` | Yes | Logout (revoke tokens) |
+| POST | `/api/auth/forgot-password` | No | Send reset email |
+| POST | `/api/auth/reset-password` | No | Reset with token |
+| PUT | `/api/auth/change-password` | Yes | Change password |
+
+### Users
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| GET | `/api/users` | Admin+ | List org users |
+| GET | `/api/users/:id` | All | Get user profile |
+| POST | `/api/users` | Admin+ | Add employee |
+| PUT | `/api/users/:id` | Admin+ | Update user |
+| DELETE | `/api/users/:id` | Admin+ | Delete user |
+
+### Leads
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| GET | `/api/leads` | All | List leads (filtered by role) |
+| GET | `/api/leads/:id` | All | Get lead details |
+| POST | `/api/leads` | All | Create lead |
+| PUT | `/api/leads/:id` | All | Update lead |
+| DELETE | `/api/leads/:id` | Admin+ | Delete lead |
+| POST | `/api/leads/:id/activities` | All | Add activity |
+| POST | `/api/leads/:id/convert` | All | Convert to deal |
+
+### Deals
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| GET | `/api/deals` | All | List deals |
+| GET | `/api/deals/:id` | All | Get deal details |
+| POST | `/api/deals` | All | Create deal |
+| PUT | `/api/deals/:id` | All | Update deal |
+| DELETE | `/api/deals/:id` | Admin+ | Delete deal |
+
+### Tasks
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| GET | `/api/tasks` | All | List tasks |
+| POST | `/api/tasks` | Manager+ | Create task |
+| PUT | `/api/tasks/:id` | All | Update task |
+| DELETE | `/api/tasks/:id` | Manager+ | Delete task |
+
+### Notifications
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| GET | `/api/notifications` | All | Get notifications |
+| PUT | `/api/notifications/:id/read` | All | Mark as read |
+| PUT | `/api/notifications/read-all` | All | Mark all read |
+
+### Dashboard
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| GET | `/api/dashboard/stats` | All | Main statistics |
+| GET | `/api/dashboard/weekly` | All | Weekly charts |
+| GET | `/api/dashboard/pipeline` | All | Deal pipeline |
+| GET | `/api/dashboard/team-performance` | Admin+ | Team metrics |
+
+### 2FA
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| POST | `/api/2fa/setup` | Yes | Generate secret + QR |
+| POST | `/api/2fa/verify` | Yes | Enable 2FA |
+| POST | `/api/2fa/disable` | Yes | Disable 2FA |
 
 ---
 

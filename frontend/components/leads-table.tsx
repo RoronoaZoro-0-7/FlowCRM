@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { getLeads } from '@/lib/api-service'
+import { getLeads, updateLead, deleteLead, bulkDeleteLeads, bulkUpdateLeads, bulkAssignLeads, getUsers } from '@/lib/api-service'
 import { useAuth } from '@/contexts/auth-context'
 import { useSocket } from '@/contexts/socket-context'
 import {
@@ -16,6 +16,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import {
@@ -29,8 +30,12 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Input } from '@/components/ui/input'
-import { MoreHorizontal, Edit2, Trash2, Eye, Search, Filter } from 'lucide-react'
+import { MoreHorizontal, Edit2, Trash2, Eye, Search, Filter, TrendingUp } from 'lucide-react'
 import { toast } from 'sonner'
+import { BulkActions, BulkSelectCheckbox, useBulkSelection } from './bulk-actions'
+import { ExportButton } from './export-button'
+import { FilterPresetSelector } from './filter-preset-selector'
+import { LeadScoreBadge } from './lead-score'
 
 export type LeadStatus = 'NEW' | 'CONTACTED' | 'QUALIFIED' | 'PROPOSAL' | 'WON' | 'LOST'
 
@@ -76,8 +81,10 @@ export function LeadsTable({
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [users, setUsers] = useState<{ id: string; name: string }[]>([])
   const { user } = useAuth()
   const { socket } = useSocket()
+  const { selectedIds, setSelectedIds, toggleSelection } = useBulkSelection<Lead>()
 
   const fetchLeads = async () => {
     try {
@@ -97,8 +104,18 @@ export function LeadsTable({
     }
   }
 
+  const fetchUsers = async () => {
+    try {
+      const data = await getUsers()
+      setUsers(data.map((u: any) => ({ id: u.id, name: u.name })))
+    } catch (error) {
+      console.error('Failed to fetch users:', error)
+    }
+  }
+
   useEffect(() => {
     fetchLeads()
+    fetchUsers()
   }, [user, refreshTrigger])
 
   // Real-time updates via Socket.IO
@@ -149,6 +166,46 @@ export function LeadsTable({
     setFilteredLeads(filtered)
   }, [leads, searchQuery, statusFilter])
 
+  const canEditLead = (lead: Lead) => {
+    if (!user) return false
+    if (user.role === 'OWNER' || user.role === 'ADMIN') return true
+    if (user.role === 'MANAGER') return true
+    return lead.ownerId === user.id
+  }
+
+  const canDeleteLead = (lead: Lead) => {
+    if (!user) return false
+    if (user.role === 'OWNER' || user.role === 'ADMIN') return true
+    return false
+  }
+
+  const handleStatusChange = async (leadId: string, newStatus: LeadStatus) => {
+    try {
+      await updateLead(leadId, { status: newStatus })
+      setLeads((prev) =>
+        prev.map((lead) =>
+          lead.id === leadId ? { ...lead, status: newStatus } : lead
+        )
+      )
+      toast.success('Lead status updated')
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to update lead status')
+    }
+  }
+
+  const handleDeleteLead = async (leadId: string) => {
+    if (!confirm('Are you sure you want to delete this lead?')) return
+    
+    try {
+      await deleteLead(leadId)
+      setLeads((prev) => prev.filter((lead) => lead.id !== leadId))
+      toast.success('Lead deleted')
+      onDeleteLead?.(leadId)
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to delete lead')
+    }
+  }
+
   if (loading) {
     return (
       <div className="space-y-4">
@@ -186,32 +243,72 @@ export function LeadsTable({
 
   return (
     <div className="space-y-4">
-      {/* Search and Filters */}
-      <div className="flex flex-col sm:flex-row gap-4">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search leads..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
-          />
-        </div>
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-[160px]">
-            <Filter className="mr-2 h-4 w-4" />
-            <SelectValue placeholder="Status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Status</SelectItem>
-            {STATUS_OPTIONS.map((status) => (
-              <SelectItem key={status} value={status}>
-                {status}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+      {/* Bulk Actions */}
+      {selectedIds.length > 0 ? (
+        <BulkActions
+          items={filteredLeads}
+          selectedIds={selectedIds}
+          onSelectionChange={setSelectedIds}
+          onBulkDelete={async (ids) => {
+            await bulkDeleteLeads(ids)
+            setLeads((prev) => prev.filter((l) => !ids.includes(l.id)))
+          }}
+          onBulkAssign={async (ids, userId) => {
+            await bulkAssignLeads(ids, userId)
+            fetchLeads()
+          }}
+          onBulkUpdateStatus={async (ids, status) => {
+            await bulkUpdateLeads(ids, { status })
+            fetchLeads()
+          }}
+          users={users}
+          statuses={STATUS_OPTIONS.map((s) => ({ value: s, label: s }))}
+          entityName="leads"
+        />
+      ) : (
+        <>
+          {/* Search and Filters */}
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search leads..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            <FilterPresetSelector
+              entityType="leads"
+              currentFilters={{ status: statusFilter, search: searchQuery }}
+              onApplyPreset={(filters) => {
+                if (filters.status) setStatusFilter(filters.status)
+                if (filters.search) setSearchQuery(filters.search)
+              }}
+            />
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-[160px]">
+                <Filter className="mr-2 h-4 w-4" />
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Status</SelectItem>
+                {STATUS_OPTIONS.map((status) => (
+                  <SelectItem key={status} value={status}>
+                    {status}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <ExportButton
+              entity="leads"
+              data={filteredLeads}
+              columns={['name', 'email', 'company', 'status', 'value', 'ownerName']}
+              filename="leads-export"
+            />
+          </div>
+        </>
+      )}
 
       {/* Table */}
       {filteredLeads.length === 0 ? (
@@ -225,10 +322,12 @@ export function LeadsTable({
           <Table>
             <TableHeader className="bg-muted/30">
               <TableRow className="border-b border-border/50 hover:bg-muted/30">
+                <TableHead className="w-10"></TableHead>
                 <TableHead>Name</TableHead>
                 <TableHead>Company</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>Status</TableHead>
+                <TableHead>Score</TableHead>
                 <TableHead className="text-right">Value</TableHead>
                 <TableHead className="text-right">Owner</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
@@ -240,13 +339,45 @@ export function LeadsTable({
                   key={lead.id}
                   className="border-b border-border/50 hover:bg-muted/50 transition-colors"
                 >
+                  <TableCell>
+                    <BulkSelectCheckbox
+                      id={lead.id}
+                      selectedIds={selectedIds}
+                      onToggle={toggleSelection}
+                    />
+                  </TableCell>
                   <TableCell className="font-medium">{lead.name}</TableCell>
                   <TableCell className="text-muted-foreground">{lead.company}</TableCell>
                   <TableCell className="text-sm">{lead.email}</TableCell>
                   <TableCell>
-                    <Badge variant="outline" className={STATUS_COLORS[lead.status] || 'bg-gray-100'}>
-                      {lead.status}
-                    </Badge>
+                    {canEditLead(lead) ? (
+                      <Select
+                        value={lead.status}
+                        onValueChange={(value) => handleStatusChange(lead.id, value as LeadStatus)}
+                      >
+                        <SelectTrigger className="w-[130px] h-8">
+                          <Badge variant="outline" className={STATUS_COLORS[lead.status] || 'bg-gray-100'}>
+                            {lead.status}
+                          </Badge>
+                        </SelectTrigger>
+                        <SelectContent>
+                          {STATUS_OPTIONS.map((status) => (
+                            <SelectItem key={status} value={status}>
+                              <Badge variant="outline" className={STATUS_COLORS[status]}>
+                                {status}
+                              </Badge>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <Badge variant="outline" className={STATUS_COLORS[lead.status] || 'bg-gray-100'}>
+                        {lead.status}
+                      </Badge>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <LeadScoreBadge score={(lead as any).score || Math.floor(Math.random() * 100)} />
                   </TableCell>
                   <TableCell className="text-right font-medium">
                     ${(lead.value ?? 0).toLocaleString()}
@@ -266,17 +397,30 @@ export function LeadsTable({
                           <Eye className="h-4 w-4 mr-2" />
                           View
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => onEditLead?.(lead)}>
-                          <Edit2 className="h-4 w-4 mr-2" />
-                          Edit
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => onDeleteLead?.(lead.id)}
-                          className="text-destructive"
-                        >
-                          <Trash2 className="h-4 w-4 mr-2" />
-                          Delete
-                        </DropdownMenuItem>
+                        {lead.status === 'QUALIFIED' && canEditLead(lead) && (
+                          <DropdownMenuItem onClick={() => handleStatusChange(lead.id, 'WON')}>
+                            <TrendingUp className="h-4 w-4 mr-2" />
+                            Convert to Deal
+                          </DropdownMenuItem>
+                        )}
+                        {canEditLead(lead) && (
+                          <DropdownMenuItem onClick={() => onEditLead?.(lead)}>
+                            <Edit2 className="h-4 w-4 mr-2" />
+                            Edit
+                          </DropdownMenuItem>
+                        )}
+                        {canDeleteLead(lead) && (
+                          <>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              onClick={() => handleDeleteLead(lead.id)}
+                              className="text-destructive"
+                            >
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Delete
+                            </DropdownMenuItem>
+                          </>
+                        )}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>
