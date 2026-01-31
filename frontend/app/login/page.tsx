@@ -80,7 +80,7 @@ export default function LoginPage() {
         <div className="relative z-10">
           <div className="flex items-center gap-3">
             <Image 
-              src="/flowcrm-logo-dark.svg" 
+              src="/pravarit.png" 
               alt="FlowCRM" 
               width={48} 
               height={48}

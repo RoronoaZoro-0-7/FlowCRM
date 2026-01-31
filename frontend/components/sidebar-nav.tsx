@@ -47,7 +47,7 @@ const ownerNavItems = [
 
 export function SidebarNav() {
   const { user, logout } = useAuth()
-  const { unreadCount } = useSocket()
+  const { unreadCount } = useSocket() as { unreadCount: number }
   const pathname = usePathname()
   const { resolvedTheme } = useTheme()
   const [isOpen, setIsOpen] = useState(false)
@@ -60,8 +60,8 @@ export function SidebarNav() {
   if (!user) return null
 
   const logoSrc = mounted && resolvedTheme === 'dark' 
-    ? '/flowcrm-logo-dark.svg' 
-    : '/flowcrm-logo.svg'
+    ? '/pravarit.png' 
+    : '/pravarit1.png'
 
   const isOwner = user.role === 'OWNER'
   const isAdmin = user.role === 'ADMIN'
@@ -80,7 +80,7 @@ export function SidebarNav() {
         {allNavItems.map((item) => {
           const Icon = item.icon
           const isActive = pathname === item.href
-          const showBadge = 'showBadge' in item && item.showBadge && unreadCount > 0
+          const showBadge = 'showBadge' in item && (item as { showBadge?: boolean }).showBadge === true && unreadCount > 0
           return (
             <Link key={item.href} href={item.href}>
               <Button
@@ -96,7 +96,7 @@ export function SidebarNav() {
                 {item.label}
                 {showBadge && (
                   <span className="absolute right-2 flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1.5 text-xs font-medium text-destructive-foreground">
-                    {unreadCount > 99 ? '99+' : unreadCount}
+                    {unreadCount > 99 ? '99+' : String(unreadCount)}
                   </span>
                 )}
               </Button>

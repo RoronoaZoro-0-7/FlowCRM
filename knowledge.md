@@ -3234,71 +3234,76 @@ export default function DashboardPage() {
 ## 🗄️ Database Seed Data Summary
 
 ### Organizations (4)
-- **FlowCRM** - Main demo company (15 users)
-- **Acme Corporation** - Enterprise client (5 users)
-- **TechStart Inc** - Startup client (4 users)
-- **Global Solutions** - International client (3 users)
+- **FlowCRM** - Platform owner's organization (10 users)
+- **Acme Corporation** - Customer company (6 users)
+- **TechStart Inc** - Customer company (5 users)
+- **Global Solutions Ltd** - Customer company (4 users)
 
-### Users (27 total)
+### User Roles Explained
+| Role | Description |
+|------|-------------|
+| **OWNER** | Only ONE exists - The platform owner (admin@flowcrm.com). Owns the entire FlowCRM system. |
+| **ADMIN** | Company owners who use FlowCRM as customers. Top role for customer organizations. |
+| **MANAGER** | Team leads who can assign tasks and manage sales reps. |
+| **SALES** | Individual contributors who manage their own leads and deals. |
+
+### Users (25 total)
 | Organization | Roles | Count |
 |--------------|-------|-------|
-| FlowCRM | 1 OWNER, 2 ADMIN, 3 MANAGER, 9 SALES | 15 |
-| Acme Corp | 1 OWNER, 1 ADMIN, 1 MANAGER, 2 SALES | 5 |
-| TechStart | 1 OWNER, 1 ADMIN, 2 SALES | 4 |
-| Global Solutions | 1 OWNER, 1 ADMIN, 1 SALES | 3 |
+| FlowCRM | 1 OWNER, 2 ADMIN, 2 MANAGER, 5 SALES | 10 |
+| Acme Corp | 1 ADMIN, 2 MANAGER, 3 SALES | 6 |
+| TechStart | 1 ADMIN, 1 MANAGER, 3 SALES | 5 |
+| Global Solutions | 1 ADMIN, 1 MANAGER, 2 SALES | 4 |
 
 ### Data Volume
 | Entity | Count |
 |--------|-------|
-| Leads | 38 |
-| Deals | 30 |
-| Tasks | 63 |
-| Activities | 80 |
-| Notifications | 79 |
-| Call Logs | 25 |
-| Calendar Events | 20 |
-| Custom Fields | 3 |
+| Leads | 54 |
+| Deals | 44 |
+| Tasks | 96 |
+| Activities | 100 |
+| Notifications | 101 |
+| Call Logs | 35 |
+| Calendar Events | 30 |
+| Chat Rooms | 3 |
+| Custom Fields | 6 |
 | Follow-up Sequences | 3 |
-| Filter Presets | 3 |
-| Audit Logs | 27 |
+| Audit Logs | 30 |
 
 ### Login Credentials (All passwords: `password`)
 
-**FlowCRM Users:**
-- admin@flowcrm.com (OWNER)
+**FlowCRM (Platform Owner's Org):**
+- admin@flowcrm.com (OWNER) - **Platform owner**
 - sarah.johnson@flowcrm.com (ADMIN)
+- david.kim@flowcrm.com (ADMIN)
 - mike.chen@flowcrm.com (MANAGER)
+- jessica.martinez@flowcrm.com (MANAGER)
 - emma.wilson@flowcrm.com (SALES)
+- james.brown@flowcrm.com (SALES)
+- olivia.davis@flowcrm.com (SALES)
+- william.garcia@flowcrm.com (SALES)
+- sophia.rodriguez@flowcrm.com (SALES)
 
-**Other Organizations:**
-- owner@acme.com (OWNER)
-- ceo@techstart.io (OWNER)
-- admin@globalsolutions.co.uk (OWNER)
+**Acme Corporation (Customer):**
+- ceo@acme.com (ADMIN) - **Company owner**
+- manager@acme.com (MANAGER)
+- team.lead@acme.com (MANAGER)
+- peter.parker@acme.com (SALES)
+- mary.jane@acme.com (SALES)
+- harry.osborn@acme.com (SALES)
 
----
+**TechStart Inc (Customer):**
+- founder@techstart.io (ADMIN) - **Company owner**
+- cto@techstart.io (MANAGER)
+- nikola@techstart.io (SALES)
+- ada@techstart.io (SALES)
+- alan@techstart.io (SALES)
 
-## 🚀 Quick Start Commands
-
-```bash
-# Clone and install
-git clone <repo>
-cd FlowCRM
-
-# Backend setup
-cd Backend
-npm install
-cp .env.example .env  # Configure your env vars
-npx prisma generate
-npx prisma db push
-npx prisma db seed    # Load demo data
-npm run dev           # Starts on :3000
-
-# Frontend setup (new terminal)
-cd frontend
-npm install
-cp .env.example .env  # Set NEXT_PUBLIC_API_URL
-npm run dev           # Starts on :3001
-```
+**Global Solutions Ltd (Customer):**
+- director@globalsolutions.co.uk (ADMIN) - **Company owner**
+- ops@globalsolutions.co.uk (MANAGER)
+- eve@globalsolutions.co.uk (SALES)
+- q@globalsolutions.co.uk (SALES)
 
 ---
 
