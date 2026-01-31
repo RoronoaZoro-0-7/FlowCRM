@@ -9,6 +9,7 @@ import {
   markChatAsRead,
   searchUsersForMention,
   getUnreadCount,
+  deleteChatRoom,
 } from '@/lib/api-service'
 import { useSocket } from '@/contexts/socket-context'
 import { useAuth } from '@/contexts/auth-context'
@@ -56,6 +57,8 @@ import {
   X,
   Loader2,
   Check,
+  Trash2,
+  ArrowLeft,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { formatDistanceToNow, format, isToday, isYesterday } from 'date-fns'
@@ -90,7 +93,7 @@ export function ChatPanel() {
   const [selectedRoom, setSelectedRoom] = useState<ChatRoom | null>(null)
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [newMessage, setNewMessage] = useState('')
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
   const [sendingMessage, setSendingMessage] = useState(false)
   const [unreadTotal, setUnreadTotal] = useState(0)
   const [showNewRoom, setShowNewRoom] = useState(false)
@@ -103,14 +106,19 @@ export function ChatPanel() {
   
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
-  const { socket } = useSocket()
+  const { socket, joinRoom, leaveRoom } = useSocket()
   const { user } = useAuth()
 
-  // Fetch rooms on mount
+  // Fetch rooms when panel opens
   useEffect(() => {
     if (isOpen) {
+      setLoading(true)
       fetchRooms()
       fetchUnreadCount()
+    } else {
+      // Reset state when panel closes
+      setSelectedRoom(null)
+      setMessages([])
     }
   }, [isOpen])
 
@@ -118,9 +126,20 @@ export function ChatPanel() {
   useEffect(() => {
     if (!socket) return
 
-    socket.on('newMessage', (message: ChatMessage & { roomId: string }) => {
+    const handleNewMessage = (message: ChatMessage & { roomId: string }) => {
       if (selectedRoom?.id === message.roomId) {
-        setMessages((prev) => [...prev, message])
+        setMessages((prev) => {
+          // Avoid duplicates - check by ID and also by content+sender for recently sent messages
+          if (prev.some(m => m.id === message.id)) return prev
+          // Also check if this is a message we just sent (within last 5 seconds)
+          const recentDuplicate = prev.some(m => 
+            m.sender.id === message.sender.id && 
+            m.content === message.content &&
+            Math.abs(new Date(m.createdAt).getTime() - new Date(message.createdAt).getTime()) < 5000
+          )
+          if (recentDuplicate) return prev
+          return [...prev, message]
+        })
         scrollToBottom()
         markChatAsRead(message.roomId)
       } else {
@@ -134,10 +153,14 @@ export function ChatPanel() {
         )
         setUnreadTotal((prev) => prev + 1)
       }
-    })
+    }
+
+    socket.on('newMessage', handleNewMessage)
+    socket.on('chat:message', handleNewMessage)
 
     return () => {
-      socket.off('newMessage')
+      socket.off('newMessage', handleNewMessage)
+      socket.off('chat:message', handleNewMessage)
     }
   }, [socket, selectedRoom])
 
@@ -186,21 +209,42 @@ export function ChatPanel() {
       setUnreadTotal((prev) => Math.max(0, prev - room.unreadCount))
 
       // Join socket room
-      socket?.emit('joinRoom', room.id)
+      joinRoom(room.id)
     } catch (error) {
       console.error('Failed to fetch messages:', error)
     }
   }
 
   const handleSendMessage = async () => {
-    if (!newMessage.trim() || !selectedRoom || sendingMessage) return
+    if (!newMessage.trim() || !selectedRoom || sendingMessage || !user) return
 
+    const messageContent = newMessage.trim()
+    const mentionIds = [...pendingMentions]
+    
+    // Clear input immediately for better UX
+    setNewMessage('')
+    setPendingMentions([])
     setSendingMessage(true)
+    
+    // Optimistically add message to UI
+    const tempId = `temp-${Date.now()}`
+    const optimisticMessage: ChatMessage = {
+      id: tempId,
+      content: messageContent,
+      createdAt: new Date().toISOString(),
+      sender: { id: user.id, name: user.name, avatar: user.avatar }
+    }
+    setMessages((prev) => [...prev, optimisticMessage])
+    scrollToBottom()
+
     try {
-      await sendChatMessage(selectedRoom.id, newMessage, pendingMentions)
-      setNewMessage('')
-      setPendingMentions([])
+      const response = await sendChatMessage(selectedRoom.id, messageContent, mentionIds) as { message: ChatMessage }
+      // Replace temp message with real one
+      setMessages((prev) => prev.map(m => m.id === tempId ? response.message : m))
     } catch (error: any) {
+      // Remove optimistic message on error
+      setMessages((prev) => prev.filter(m => m.id !== tempId))
+      setNewMessage(messageContent) // Restore message
       toast.error(error.message || 'Failed to send message')
     } finally {
       setSendingMessage(false)
@@ -269,14 +313,41 @@ export function ChatPanel() {
         type: roomType,
         memberIds: selectedUsers.map((u) => u.id),
         name: roomType === 'group' ? `Group Chat` : undefined,
-      }) as { room: ChatRoom }
+      }) as { room: ChatRoom; existing?: boolean }
 
-      setRooms((prev) => [data.room, ...prev])
+      if (data.existing) {
+        // Room already exists, just select it
+        toast.info('Chat already exists')
+      }
+      
+      // Check if room already in list
+      const existingIndex = rooms.findIndex(r => r.id === data.room.id)
+      if (existingIndex === -1) {
+        setRooms((prev) => [data.room, ...prev])
+      }
+      
       selectRoom(data.room)
       setShowNewRoom(false)
       setSelectedUsers([])
     } catch (error: any) {
       toast.error(error.message || 'Failed to create chat room')
+    }
+  }
+
+  const handleDeleteRoom = async (roomId: string, e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (!confirm('Are you sure you want to delete this conversation? All messages will be lost.')) return
+    
+    try {
+      await deleteChatRoom(roomId)
+      setRooms((prev) => prev.filter(r => r.id !== roomId))
+      if (selectedRoom?.id === roomId) {
+        setSelectedRoom(null)
+        setMessages([])
+      }
+      toast.success('Conversation deleted')
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to delete conversation')
     }
   }
 
@@ -377,48 +448,62 @@ export function ChatPanel() {
                 ) : (
                   <div className="divide-y">
                     {rooms.map((room) => (
-                      <button
+                      <div
                         key={room.id}
-                        className="w-full p-4 flex items-start gap-3 hover:bg-muted/50 transition-colors text-left"
-                        onClick={() => selectRoom(room)}
+                        className="w-full p-4 flex items-start gap-3 hover:bg-muted/50 transition-colors text-left group relative"
                       >
-                        <Avatar>
-                          <AvatarImage
-                            src={room.members[0]?.user.avatar}
-                          />
-                          <AvatarFallback>
-                            {room.type === 'direct' ? (
-                              getInitials(getRoomName(room))
-                            ) : (
-                              <Users className="h-4 w-4" />
-                            )}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between">
-                            <p className="font-medium truncate">
-                              {getRoomName(room)}
-                            </p>
+                        <button
+                          className="flex items-start gap-3 flex-1 min-w-0"
+                          onClick={() => selectRoom(room)}
+                        >
+                          <Avatar>
+                            <AvatarImage
+                              src={room.members[0]?.user.avatar}
+                            />
+                            <AvatarFallback>
+                              {room.type === 'direct' ? (
+                                getInitials(getRoomName(room))
+                              ) : (
+                                <Users className="h-4 w-4" />
+                              )}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between">
+                              <p className="font-medium truncate">
+                                {getRoomName(room)}
+                              </p>
+                              {room.lastMessage && (
+                                <span className="text-xs text-muted-foreground">
+                                  {formatDistanceToNow(new Date(room.lastMessage.createdAt), {
+                                    addSuffix: false,
+                                  })}
+                                </span>
+                              )}
+                            </div>
                             {room.lastMessage && (
-                              <span className="text-xs text-muted-foreground">
-                                {formatDistanceToNow(new Date(room.lastMessage.createdAt), {
-                                  addSuffix: false,
-                                })}
-                              </span>
+                              <p className="text-sm text-muted-foreground truncate">
+                                {room.lastMessage.sender.name}: {room.lastMessage.content}
+                              </p>
                             )}
                           </div>
-                          {room.lastMessage && (
-                            <p className="text-sm text-muted-foreground truncate">
-                              {room.lastMessage.sender.name}: {room.lastMessage.content}
-                            </p>
+                        </button>
+                        <div className="flex items-center gap-1">
+                          {room.unreadCount > 0 && (
+                            <Badge variant="default">
+                              {room.unreadCount}
+                            </Badge>
                           )}
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={(e) => handleDeleteRoom(room.id, e)}
+                          >
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
                         </div>
-                        {room.unreadCount > 0 && (
-                          <Badge variant="default" className="ml-2">
-                            {room.unreadCount}
-                          </Badge>
-                        )}
-                      </button>
+                      </div>
                     ))}
                   </div>
                 )}
@@ -555,7 +640,18 @@ export function ChatPanel() {
         </div>
 
         {/* New Room Dialog */}
-        <Dialog open={showNewRoom} onOpenChange={setShowNewRoom}>
+        <Dialog open={showNewRoom} onOpenChange={(open) => {
+          setShowNewRoom(open)
+          if (open) {
+            // Load users when dialog opens
+            searchUsersForMention('').then((data: any) => {
+              setSearchUsers(data.users || [])
+            }).catch(console.error)
+          } else {
+            setSearchUsers([])
+            setSelectedUsers([])
+          }
+        }}>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>New Conversation</DialogTitle>
@@ -564,7 +660,7 @@ export function ChatPanel() {
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
-              <Command className="border rounded-md">
+              <Command className="border rounded-md" shouldFilter={false}>
                 <CommandInput
                   placeholder="Search users..."
                   onValueChange={async (value) => {
@@ -579,9 +675,10 @@ export function ChatPanel() {
                 <CommandList>
                   <CommandEmpty>No users found.</CommandEmpty>
                   <CommandGroup>
-                    {searchUsers.map((u) => (
+                    {searchUsers.filter(u => u.id !== user?.id).map((u) => (
                       <CommandItem
                         key={u.id}
+                        value={u.id}
                         onSelect={() => {
                           if (!selectedUsers.find((su) => su.id === u.id)) {
                             setSelectedUsers((prev) => [...prev, u])

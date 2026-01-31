@@ -213,14 +213,14 @@ export function CreateDealModal({
           <div className="space-y-2">
             <Label htmlFor="lead">Associated Lead</Label>
             <Select
-              value={formData.leadId}
-              onValueChange={(value) => setFormData({ ...formData, leadId: value })}
+              value={formData.leadId || '_none'}
+              onValueChange={(value) => setFormData({ ...formData, leadId: value === '_none' ? '' : value })}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Select a lead (optional)" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">None</SelectItem>
+                <SelectItem value="_none">None</SelectItem>
                 {leads.map((lead) => (
                   <SelectItem key={lead.id} value={lead.id}>
                     {lead.name} - {lead.company}
@@ -234,14 +234,14 @@ export function CreateDealModal({
             <div className="space-y-2">
               <Label htmlFor="assignedTo">Assigned To</Label>
               <Select
-                value={formData.assignedToId}
-                onValueChange={(value) => setFormData({ ...formData, assignedToId: value })}
+                value={formData.assignedToId || '_none'}
+                onValueChange={(value) => setFormData({ ...formData, assignedToId: value === '_none' ? '' : value })}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select user" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Unassigned</SelectItem>
+                  <SelectItem value="_none">Unassigned</SelectItem>
                   {users.map((user) => (
                     <SelectItem key={user.id} value={user.id}>
                       {user.name}

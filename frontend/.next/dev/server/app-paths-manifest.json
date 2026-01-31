@@ -1,12 +1,3 @@
 {
-  "/_not-found/page": "app/_not-found/page.js",
-  "/calendar/page": "app/calendar/page.js",
-  "/dashboard/page": "app/dashboard/page.js",
-  "/deals/page": "app/deals/page.js",
-  "/leads/page": "app/leads/page.js",
-  "/login/page": "app/login/page.js",
-  "/notifications/page": "app/notifications/page.js",
-  "/organizations/page": "app/organizations/page.js",
-  "/tasks/page": "app/tasks/page.js",
-  "/users/page": "app/users/page.js"
+  "/tasks/page": "app/tasks/page.js"
 }

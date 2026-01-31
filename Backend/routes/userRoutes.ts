@@ -11,8 +11,8 @@ const router = Router();
 
 router.use(isAuth);
 
-// Only ADMIN users can access these routes
-router.use(requireRole("ADMIN", "MANAGER"));
+// Only OWNER, ADMIN, and MANAGER users can access these routes
+router.use(requireRole("OWNER", "ADMIN", "MANAGER"));
 router.get("/", getEmployees);
 router.post("/add", addEmployee);
 router.get("/:id", getEmployeeById);

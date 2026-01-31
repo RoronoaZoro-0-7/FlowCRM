@@ -33,7 +33,10 @@ export default function DealsPage() {
               Manage your sales pipeline and track deals
             </p>
           </div>
-          <Button size="lg" className="gap-2" onClick={() => setIsCreateModalOpen(true)}>
+          <Button size="lg" className="gap-2" onClick={() => {
+            setEditingDeal(null)
+            setIsCreateModalOpen(true)
+          }}>
             <Plus className="h-4 w-4" />
             New Deal
           </Button>
@@ -46,7 +49,12 @@ export default function DealsPage() {
 
         <CreateDealModal
           open={isCreateModalOpen}
-          onOpenChange={setIsCreateModalOpen}
+          onOpenChange={(open) => {
+            setIsCreateModalOpen(open)
+            if (!open) {
+              setEditingDeal(null)
+            }
+          }}
           onDealCreated={handleDealCreated}
           editingDeal={editingDeal}
         />

@@ -107,7 +107,7 @@ const updateTask = TryCatch(async (req: Request, res: Response) => {
   if (!req.user) return res.status(401).json({ message: "Not authenticated" });
 
   const id = req.params.id as string;
-  const { status, priority } = req.body;
+  const { status, priority, title, description, dueDate, assignedToId } = req.body;
 
   const task = await prisma.task.findUnique({ where: { id } });
   if (!task) return res.status(404).json({ message: "Task not found" });
@@ -120,14 +120,27 @@ const updateTask = TryCatch(async (req: Request, res: Response) => {
     return res.status(403).json({ message: "Access denied" });
   }
 
-  // SALES can only update their own tasks
+  // SALES can only update status/priority of their own tasks
   if (user.role === "SALES" && task.assignedToId !== user.id) {
     return res.status(403).json({ message: "Cannot modify others' tasks" });
   }
 
+  // Build update data - only include fields that are provided
+  const updateData: any = {};
+  if (status !== undefined) updateData.status = status;
+  if (priority !== undefined) updateData.priority = priority;
+  if (title !== undefined) updateData.title = title;
+  if (description !== undefined) updateData.description = description;
+  if (dueDate !== undefined) updateData.dueDate = dueDate ? new Date(dueDate) : null;
+  if (assignedToId !== undefined) updateData.assignedToId = assignedToId;
+
   const updated = await prisma.task.update({
     where: { id },
-    data: { status, priority },
+    data: updateData,
+    include: {
+      assignedTo: { select: { id: true, name: true } },
+      createdBy: { select: { id: true, name: true } },
+    },
   });
 
   res.json(updated);

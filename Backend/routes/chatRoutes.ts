@@ -38,9 +38,51 @@ router.get('/rooms', isAuth, TryCatch(async (req: Request, res: Response) => {
 router.post('/rooms', isAuth, TryCatch(async (req: Request, res: Response) => {
   const { name, type, memberIds, dealId, leadId } = req.body;
   const userId = req.user!.userId;
-  const orgId = req.user!.orgId;
+  
+  // Get orgId from user in database if not in token (for OWNER users)
+  let orgId = req.user!.orgId;
+  if (!orgId) {
+    const currentUser = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { orgId: true }
+    });
+    orgId = currentUser?.orgId;
+  }
+  
+  if (!orgId) {
+    return res.status(400).json({ message: 'Organization not found for user' });
+  }
 
-  const allMemberIds = [...new Set([userId, ...(memberIds || [])])];
+  const allMemberIds = [...new Set([userId, ...(memberIds || [])])].sort();
+
+  // Check for existing direct chat with same members
+  if (type === 'direct' && allMemberIds.length === 2) {
+    const existingRooms = await prisma.chatRoom.findMany({
+      where: {
+        type: 'direct',
+        orgId,
+        members: {
+          every: {
+            userId: { in: allMemberIds }
+          }
+        }
+      },
+      include: {
+        members: { include: { user: { select: { id: true, name: true, avatar: true } } } }
+      }
+    });
+    
+    // Find exact match (same members, no more, no less)
+    const exactMatch = existingRooms.find(room => {
+      const roomMemberIds = room.members.map(m => m.userId).sort();
+      return roomMemberIds.length === allMemberIds.length &&
+        roomMemberIds.every((id, i) => id === allMemberIds[i]);
+    });
+    
+    if (exactMatch) {
+      return res.status(200).json({ room: exactMatch, existing: true });
+    }
+  }
 
   const room = await prisma.chatRoom.create({
     data: {
@@ -55,6 +97,28 @@ router.post('/rooms', isAuth, TryCatch(async (req: Request, res: Response) => {
   });
 
   res.status(201).json({ room });
+}));
+
+// Delete chat room
+router.delete('/rooms/:roomId', isAuth, TryCatch(async (req: Request, res: Response) => {
+  const roomId = req.params.roomId as string;
+  const userId = req.user!.userId;
+
+  const membership = await prisma.chatMember.findUnique({
+    where: { roomId_userId: { roomId, userId } },
+    include: { room: true },
+  });
+
+  if (!membership) {
+    return res.status(403).json({ message: 'Not a member of this room' });
+  }
+
+  // Delete all messages, members, and room
+  await prisma.chatMessage.deleteMany({ where: { roomId } });
+  await prisma.chatMember.deleteMany({ where: { roomId } });
+  await prisma.chatRoom.delete({ where: { id: roomId } });
+
+  res.json({ success: true });
 }));
 
 // Get messages in a room
@@ -165,17 +229,22 @@ router.post('/rooms/:roomId/read', isAuth, TryCatch(async (req: Request, res: Re
   res.json({ success: true });
 }));
 
-// Search users for @mention
+// Search users for @mention or new chat
 router.get('/users/search', isAuth, TryCatch(async (req: Request, res: Response) => {
   const { q } = req.query;
   const orgId = req.user!.orgId;
+  const userId = req.user!.userId;
 
-  if (!q) return res.json({ users: [] });
-
+  // Return all users in org (except current user) if no query
   const users = await prisma.user.findMany({
-    where: { orgId, name: { contains: q as string, mode: 'insensitive' } },
-    select: { id: true, name: true, avatar: true },
-    take: 10,
+    where: { 
+      orgId,
+      id: { not: userId }, // Exclude current user
+      ...(q ? { name: { contains: q as string, mode: 'insensitive' } } : {})
+    },
+    select: { id: true, name: true, email: true, avatar: true },
+    take: 20,
+    orderBy: { name: 'asc' }
   });
 
   res.json({ users });

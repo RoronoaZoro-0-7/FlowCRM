@@ -1,6 +1,6 @@
 'use client'
 
-import React from "react"
+import React, { useEffect } from "react"
 
 import { useState } from 'react'
 import {
@@ -21,11 +21,20 @@ import {
 } from '@/components/ui/select'
 import { Label } from '@/components/ui/label'
 import { toast } from 'sonner'
+import { createUser, updateUser } from '@/lib/api-service'
+
+interface User {
+  id: string
+  name: string
+  email: string
+  role: string
+}
 
 interface AddUserModalProps {
   isOpen: boolean
   onClose: () => void
   onSuccess?: () => void
+  editingUser?: User | null
 }
 
 const ROLE_OPTIONS = [
@@ -34,13 +43,29 @@ const ROLE_OPTIONS = [
   { value: 'ADMIN', label: 'Admin' },
 ]
 
-export function AddUserModal({ isOpen, onClose, onSuccess }: AddUserModalProps) {
+export function AddUserModal({ isOpen, onClose, onSuccess, editingUser }: AddUserModalProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     role: 'SALES',
   })
+
+  useEffect(() => {
+    if (editingUser) {
+      setFormData({
+        name: editingUser.name,
+        email: editingUser.email,
+        role: editingUser.role,
+      })
+    } else {
+      setFormData({
+        name: '',
+        email: '',
+        role: 'SALES',
+      })
+    }
+  }, [editingUser, isOpen])
 
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement>
@@ -64,8 +89,16 @@ export function AddUserModal({ isOpen, onClose, onSuccess }: AddUserModalProps) 
     setIsLoading(true)
 
     try {
-      // TODO: Implement API call to create user
-      toast.success('User added successfully')
+      if (editingUser) {
+        await updateUser(editingUser.id, {
+          name: formData.name,
+          role: formData.role,
+        })
+        toast.success('User updated successfully')
+      } else {
+        await createUser(formData)
+        toast.success('User added successfully')
+      }
       setFormData({
         name: '',
         email: '',
@@ -75,7 +108,7 @@ export function AddUserModal({ isOpen, onClose, onSuccess }: AddUserModalProps) 
       onSuccess?.()
     } catch (error) {
       toast.error(
-        error instanceof Error ? error.message : 'Failed to add user'
+        error instanceof Error ? error.message : editingUser ? 'Failed to update user' : 'Failed to add user'
       )
     } finally {
       setIsLoading(false)
@@ -86,7 +119,7 @@ export function AddUserModal({ isOpen, onClose, onSuccess }: AddUserModalProps) 
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Add Team Member</DialogTitle>
+          <DialogTitle>{editingUser ? 'Edit Team Member' : 'Add Team Member'}</DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -112,6 +145,7 @@ export function AddUserModal({ isOpen, onClose, onSuccess }: AddUserModalProps) 
               onChange={handleInputChange}
               placeholder="john@example.com"
               required
+              disabled={!!editingUser}
             />
           </div>
 
@@ -131,16 +165,18 @@ export function AddUserModal({ isOpen, onClose, onSuccess }: AddUserModalProps) 
             </Select>
           </div>
 
-          <div className="rounded-lg bg-muted/50 p-3 text-xs text-muted-foreground">
-            An invitation email will be sent to the user with login credentials.
-          </div>
+          {!editingUser && (
+            <div className="rounded-lg bg-muted/50 p-3 text-xs text-muted-foreground">
+              An invitation email will be sent to the user with login credentials.
+            </div>
+          )}
 
           <DialogFooter>
             <Button variant="outline" onClick={onClose}>
               Cancel
             </Button>
             <Button type="submit" disabled={isLoading}>
-              {isLoading ? 'Adding...' : 'Add User'}
+              {isLoading ? (editingUser ? 'Updating...' : 'Adding...') : (editingUser ? 'Update User' : 'Add User')}
             </Button>
           </DialogFooter>
         </form>

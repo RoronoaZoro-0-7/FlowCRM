@@ -51,6 +51,11 @@ export async function makeRequest<T>(
   }
 
   if (!response.ok) {
+    // Check if response is HTML (error page) instead of JSON
+    const contentType = response.headers.get('content-type')
+    if (contentType && contentType.includes('text/html')) {
+      throw new Error(`API error: ${response.status} - Server returned HTML instead of JSON. Is the backend running?`)
+    }
     const error = await response.json()
     throw new Error(error.message || `API error: ${response.status}`)
   }
@@ -266,6 +271,10 @@ export async function sendChatMessage(roomId: string, content: string, mentionId
 
 export async function markChatAsRead(roomId: string) {
   return makeRequest(`/chat/rooms/${roomId}/read`, { method: 'POST' })
+}
+
+export async function deleteChatRoom(roomId: string) {
+  return makeRequest(`/chat/rooms/${roomId}`, { method: 'DELETE' })
 }
 
 export async function searchUsersForMention(query: string) {

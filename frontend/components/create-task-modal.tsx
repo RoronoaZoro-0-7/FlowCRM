@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { createTask, getUsers } from '@/lib/api-service'
+import { createTask, updateTask, getUsers } from '@/lib/api-service'
 import { useAuth } from '@/contexts/auth-context'
 import {
   Dialog,
@@ -32,13 +32,23 @@ interface User {
   role: string
 }
 
+interface Task {
+  id: string
+  title: string
+  description?: string
+  priority: string
+  dueDate?: string
+  assignedToId: string
+}
+
 interface CreateTaskModalProps {
   isOpen: boolean
   onClose: () => void
   onSuccess?: () => void
+  editingTask?: Task | null
 }
 
-export function CreateTaskModal({ isOpen, onClose, onSuccess }: CreateTaskModalProps) {
+export function CreateTaskModal({ isOpen, onClose, onSuccess, editingTask }: CreateTaskModalProps) {
   const { user } = useAuth()
   const [isLoading, setIsLoading] = useState(false)
   const [users, setUsers] = useState<User[]>([])
@@ -54,8 +64,25 @@ export function CreateTaskModal({ isOpen, onClose, onSuccess }: CreateTaskModalP
   useEffect(() => {
     if (isOpen) {
       fetchUsers()
+      if (editingTask) {
+        setFormData({
+          title: editingTask.title,
+          description: editingTask.description || '',
+          priority: editingTask.priority,
+          dueDate: editingTask.dueDate ? new Date(editingTask.dueDate).toISOString().split('T')[0] : '',
+          assignedToId: editingTask.assignedToId,
+        })
+      } else {
+        setFormData({
+          title: '',
+          description: '',
+          priority: 'MEDIUM',
+          dueDate: '',
+          assignedToId: '',
+        })
+      }
     }
-  }, [isOpen])
+  }, [isOpen, editingTask])
 
   const fetchUsers = async () => {
     setLoadingUsers(true)
@@ -99,15 +126,22 @@ export function CreateTaskModal({ isOpen, onClose, onSuccess }: CreateTaskModalP
     setIsLoading(true)
 
     try {
-      await createTask({
+      const taskData = {
         title: formData.title,
         description: formData.description || undefined,
         priority: formData.priority,
         dueDate: formData.dueDate || undefined,
         assignedToId: formData.assignedToId,
-      })
+      }
 
-      toast.success('Task created successfully')
+      if (editingTask) {
+        await updateTask(editingTask.id, taskData)
+        toast.success('Task updated successfully')
+      } else {
+        await createTask(taskData)
+        toast.success('Task created successfully')
+      }
+      
       setFormData({
         title: '',
         description: '',
@@ -119,7 +153,7 @@ export function CreateTaskModal({ isOpen, onClose, onSuccess }: CreateTaskModalP
       onSuccess?.()
     } catch (error) {
       toast.error(
-        error instanceof Error ? error.message : 'Failed to create task'
+        error instanceof Error ? error.message : editingTask ? 'Failed to update task' : 'Failed to create task'
       )
     } finally {
       setIsLoading(false)
@@ -130,9 +164,9 @@ export function CreateTaskModal({ isOpen, onClose, onSuccess }: CreateTaskModalP
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>Create New Task</DialogTitle>
+          <DialogTitle>{editingTask ? 'Edit Task' : 'Create New Task'}</DialogTitle>
           <DialogDescription>
-            Add a new task and assign it to a team member.
+            {editingTask ? 'Update the task details below.' : 'Add a new task and assign it to a team member.'}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
@@ -217,7 +251,7 @@ export function CreateTaskModal({ isOpen, onClose, onSuccess }: CreateTaskModalP
             </Button>
             <Button type="submit" disabled={isLoading}>
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Create Task
+              {editingTask ? 'Update Task' : 'Create Task'}
             </Button>
           </DialogFooter>
         </form>

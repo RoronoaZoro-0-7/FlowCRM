@@ -160,32 +160,32 @@ export function SocketProvider({ children }: { children: ReactNode }) {
 
     // Chat methods
     const joinRoom = useCallback((roomId: string) => {
-        socket?.emit('join_room', roomId)
+        socket?.emit('chat:join', roomId)
     }, [socket])
 
     const leaveRoom = useCallback((roomId: string) => {
-        socket?.emit('leave_room', roomId)
+        socket?.emit('chat:leave', roomId)
     }, [socket])
 
     const sendChatMessage = useCallback((roomId: string, content: string, mentionIds?: string[]) => {
-        socket?.emit('chat_message', { roomId, content, mentionIds })
+        socket?.emit('chat:message', { roomId, content, mentionIds })
     }, [socket])
 
     const emitTyping = useCallback((roomId: string, isTyping: boolean) => {
-        socket?.emit('typing', { roomId, isTyping })
+        socket?.emit('chat:typing', { roomId, isTyping })
     }, [socket])
 
     const onChatMessage = useCallback((callback: (message: ChatMessage) => void) => {
-        socket?.on('new_message', callback)
+        socket?.on('chat:message', callback)
         return () => {
-            socket?.off('new_message', callback)
+            socket?.off('chat:message', callback)
         }
     }, [socket])
 
     const onTyping = useCallback((callback: (data: TypingData) => void) => {
-        socket?.on('typing', callback)
+        socket?.on('chat:typing', callback)
         return () => {
-            socket?.off('typing', callback)
+            socket?.off('chat:typing', callback)
         }
     }, [socket])
 

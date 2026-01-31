@@ -254,7 +254,7 @@ export default function UserProfilePage() {
               </CardHeader>
               <CardContent>
                 {tasks.length === 0 ? (
-                  <p className="text-muted-foreground text-center py-8">No tasks assigned</p>
+                  <p className="text-muted-foreground text-center py-7">No tasks assigned</p>
                 ) : (
                   <Table>
                     <TableHeader>

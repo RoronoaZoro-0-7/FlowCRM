@@ -30,7 +30,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Input } from '@/components/ui/input'
-import { MoreHorizontal, Edit2, Trash2, CheckCircle, Search, Filter } from 'lucide-react'
+import { MoreHorizontal, Edit2, Trash2, CheckCircle, Search, Filter, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react'
 import { toast } from 'sonner'
 import { format } from 'date-fns'
 
@@ -85,6 +85,7 @@ export function TasksTable({ onEditTask, refreshTrigger }: TasksTableProps) {
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [priorityFilter, setPriorityFilter] = useState<string>('all')
+  const [sortByPriority, setSortByPriority] = useState<'asc' | 'desc' | null>(null)
   const { user } = useAuth()
   const { socket } = useSocket()
 
@@ -132,7 +133,7 @@ export function TasksTable({ onEditTask, refreshTrigger }: TasksTableProps) {
     }
   }, [socket])
 
-  // Apply filters
+  // Apply filters and sorting
   useEffect(() => {
     let filtered = [...tasks]
 
@@ -157,8 +158,21 @@ export function TasksTable({ onEditTask, refreshTrigger }: TasksTableProps) {
       filtered = filtered.filter((task) => task.priority === priorityFilter)
     }
 
+    // Sort by priority
+    if (sortByPriority) {
+      const priorityOrder: Record<TaskPriority, number> = {
+        HIGH: 3,
+        MEDIUM: 2,
+        LOW: 1,
+      }
+      filtered.sort((a, b) => {
+        const diff = priorityOrder[a.priority] - priorityOrder[b.priority]
+        return sortByPriority === 'desc' ? -diff : diff
+      })
+    }
+
     setFilteredTasks(filtered)
-  }, [tasks, searchQuery, statusFilter, priorityFilter])
+  }, [tasks, searchQuery, statusFilter, priorityFilter, sortByPriority])
 
   const handleStatusChange = async (taskId: string, newStatus: TaskStatus) => {
     try {
@@ -171,6 +185,20 @@ export function TasksTable({ onEditTask, refreshTrigger }: TasksTableProps) {
       toast.success('Task status updated')
     } catch (error) {
       toast.error('Failed to update task status')
+    }
+  }
+
+  const handlePriorityChange = async (taskId: string, newPriority: TaskPriority) => {
+    try {
+      await updateTask(taskId, { priority: newPriority })
+      setTasks((prev) =>
+        prev.map((task) =>
+          task.id === taskId ? { ...task, priority: newPriority } : task
+        )
+      )
+      toast.success('Task priority updated')
+    } catch (error) {
+      toast.error('Failed to update task priority')
     }
   }
 
@@ -251,6 +279,24 @@ export function TasksTable({ onEditTask, refreshTrigger }: TasksTableProps) {
               ))}
             </SelectContent>
           </Select>
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => {
+              if (sortByPriority === null) setSortByPriority('desc')
+              else if (sortByPriority === 'desc') setSortByPriority('asc')
+              else setSortByPriority(null)
+            }}
+            title={sortByPriority === 'desc' ? 'High to Low' : sortByPriority === 'asc' ? 'Low to High' : 'Sort by Priority'}
+          >
+            {sortByPriority === 'desc' ? (
+              <ArrowDown className="h-4 w-4" />
+            ) : sortByPriority === 'asc' ? (
+              <ArrowUp className="h-4 w-4" />
+            ) : (
+              <ArrowUpDown className="h-4 w-4" />
+            )}
+          </Button>
         </div>
       </div>
 
@@ -293,7 +339,7 @@ export function TasksTable({ onEditTask, refreshTrigger }: TasksTableProps) {
                       }
                       disabled={!canEditTask(task)}
                     >
-                      <SelectTrigger className="w-[130px] h-8">
+                      <SelectTrigger className="w-28 h-8">
                         <Badge className={STATUS_COLORS[task.status]}>
                           {task.status.replace('_', ' ')}
                         </Badge>
@@ -308,9 +354,26 @@ export function TasksTable({ onEditTask, refreshTrigger }: TasksTableProps) {
                     </Select>
                   </TableCell>
                   <TableCell>
-                    <Badge className={PRIORITY_COLORS[task.priority]}>
-                      {task.priority}
-                    </Badge>
+                    <Select
+                      value={task.priority}
+                      onValueChange={(value) =>
+                        handlePriorityChange(task.id, value as TaskPriority)
+                      }
+                      disabled={!canEditTask(task)}
+                    >
+                      <SelectTrigger className="w-24 h-8">
+                        <Badge className={PRIORITY_COLORS[task.priority]}>
+                          {task.priority}
+                        </Badge>
+                      </SelectTrigger>
+                      <SelectContent>
+                        {PRIORITY_OPTIONS.map((priority) => (
+                          <SelectItem key={priority} value={priority}>
+                            {priority}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </TableCell>
                   <TableCell>{task.assignedTo?.name || '-'}</TableCell>
                   <TableCell>

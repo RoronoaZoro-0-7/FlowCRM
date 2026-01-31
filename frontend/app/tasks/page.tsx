@@ -5,7 +5,7 @@ import { AppLayout } from '@/app/layout-app'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Plus } from 'lucide-react'
-import { TasksTable } from '@/components/tasks-table'
+import { TasksTable, Task } from '@/components/tasks-table'
 import { CreateTaskModal } from '@/components/create-task-modal'
 import { useAuth } from '@/contexts/auth-context'
 
@@ -13,11 +13,18 @@ export default function TasksPage() {
   const { user } = useAuth()
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [refreshTrigger, setRefreshTrigger] = useState(0)
+  const [editingTask, setEditingTask] = useState<Task | null>(null)
 
   const canCreateTask = user?.role !== 'SALES'
 
   const handleTaskCreated = () => {
     setRefreshTrigger((prev) => prev + 1)
+    setEditingTask(null)
+  }
+
+  const handleEditTask = (task: Task) => {
+    setEditingTask(task)
+    setIsCreateModalOpen(true)
   }
 
   return (
@@ -34,7 +41,10 @@ export default function TasksPage() {
             <Button
               size="lg"
               className="gap-2"
-              onClick={() => setIsCreateModalOpen(true)}
+              onClick={() => {
+                setEditingTask(null)
+                setIsCreateModalOpen(true)
+              }}
             >
               <Plus className="h-4 w-4" />
               New Task
@@ -47,15 +57,22 @@ export default function TasksPage() {
             <CardTitle>All Tasks</CardTitle>
           </CardHeader>
           <div className="px-6 pb-6">
-            <TasksTable refreshTrigger={refreshTrigger} />
+            <TasksTable 
+              refreshTrigger={refreshTrigger} 
+              onEditTask={handleEditTask}
+            />
           </div>
         </Card>
 
         {canCreateTask && (
           <CreateTaskModal
             isOpen={isCreateModalOpen}
-            onClose={() => setIsCreateModalOpen(false)}
+            onClose={() => {
+              setIsCreateModalOpen(false)
+              setEditingTask(null)
+            }}
             onSuccess={handleTaskCreated}
+            editingTask={editingTask}
           />
         )}
       </div>

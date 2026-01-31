@@ -14,10 +14,11 @@ export default function UsersPage() {
   const { user } = useAuth()
   const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false)
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
+  const [refreshTrigger, setRefreshTrigger] = useState(0)
 
   const handleEditUser = (user: User) => {
     setSelectedUser(user)
-    // TODO: Open edit modal
+    setIsAddUserModalOpen(true)
   }
 
   const handleDeleteUser = async (id: string) => {
@@ -25,8 +26,12 @@ export default function UsersPage() {
     console.log('Delete user:', id)
   }
 
+  const handleUserSaved = () => {
+    setRefreshTrigger((prev) => prev + 1)
+  }
+
   return (
-    <ProtectedRoute requiredRoles={['ADMIN']}>
+    <ProtectedRoute requiredRoles={['OWNER', 'ADMIN']}>
       <AppLayout>
         <div className="space-y-6">
           <div className="flex items-center justify-between">
@@ -39,7 +44,10 @@ export default function UsersPage() {
             <Button
               size="lg"
               className="gap-2"
-              onClick={() => setIsAddUserModalOpen(true)}
+              onClick={() => {
+                setSelectedUser(null)
+                setIsAddUserModalOpen(true)
+              }}
             >
               <Plus className="h-4 w-4" />
               Add User
@@ -54,13 +62,19 @@ export default function UsersPage() {
               <UsersTable
                 onEditUser={handleEditUser}
                 onDeleteUser={handleDeleteUser}
+                refreshTrigger={refreshTrigger}
               />
             </div>
           </Card>
 
           <AddUserModal
             isOpen={isAddUserModalOpen}
-            onClose={() => setIsAddUserModalOpen(false)}
+            onClose={() => {
+              setIsAddUserModalOpen(false)
+              setSelectedUser(null)
+            }}
+            onSuccess={handleUserSaved}
+            editingUser={selectedUser}
           />
         </div>
       </AppLayout>

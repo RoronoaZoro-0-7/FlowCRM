@@ -43,11 +43,16 @@ export interface User {
   status: 'active' | 'inactive'
   createdAt: string
   lastLogin?: string
+  organization?: {
+    id: string
+    name: string
+  }
 }
 
 interface UsersTableProps {
   onEditUser?: (user: User) => void
   onDeleteUser?: (id: string) => void
+  refreshTrigger?: number
 }
 
 const ROLE_COLORS: Record<string, string> = {
@@ -64,7 +69,7 @@ const STATUS_COLORS: Record<string, string> = {
 
 const ROLE_OPTIONS: UserRole[] = ['OWNER', 'ADMIN', 'MANAGER', 'SALES']
 
-export function UsersTable({ onEditUser, onDeleteUser }: UsersTableProps) {
+export function UsersTable({ onEditUser, onDeleteUser, refreshTrigger }: UsersTableProps) {
   const [users, setUsers] = useState<User[]>([])
   const [filteredUsers, setFilteredUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
@@ -88,7 +93,7 @@ export function UsersTable({ onEditUser, onDeleteUser }: UsersTableProps) {
     }
 
     fetchUsers()
-  }, [])
+  }, [refreshTrigger])
 
   // Apply search and role filters
   useEffect(() => {
@@ -243,9 +248,9 @@ export function UsersTable({ onEditUser, onDeleteUser }: UsersTableProps) {
               <TableRow className="border-b border-border/50 hover:bg-muted/30">
                 <TableHead>User</TableHead>
                 <TableHead>Email</TableHead>
+                {currentUser?.role === 'OWNER' && <TableHead>Organization</TableHead>}
                 <TableHead>Role</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead className="text-right">Last Login</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -267,6 +272,11 @@ export function UsersTable({ onEditUser, onDeleteUser }: UsersTableProps) {
                     </div>
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">{user.email}</TableCell>
+                  {currentUser?.role === 'OWNER' && (
+                    <TableCell className="text-sm text-muted-foreground">
+                      {user.organization?.name || '-'}
+                    </TableCell>
+                  )}
                   <TableCell onClick={(e) => e.stopPropagation()}>
                     {canChangeRole(user) ? (
                       <Select

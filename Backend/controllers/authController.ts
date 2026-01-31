@@ -25,13 +25,13 @@ const register = TryCatch(async (req: Request, res: Response) => {
         data: { name: orgName },
     });
 
-    // Create admin user
+    // Create owner user (first user of org is owner)
     const user = await prisma.user.create({
         data: {
             name,
             email,
             password: hashedPassword,
-            role: "ADMIN",
+            role: "OWNER",
             orgId: org.id,
         },
     });
@@ -202,7 +202,7 @@ const refreshToken = TryCatch(async (req: Request, res: Response) => {
     if (!user) return res.status(401).json({ message: "User not found" });
 
     const accessToken = jwt.sign(
-        { userId: user.id, role: user.role },
+        { userId: user.id, role: user.role, orgId: user.orgId },
         process.env.JWT_SECRET!,
         { expiresIn: "15m" }
     );

@@ -1,7 +1,6 @@
 'use client'
 
 import React, { useEffect } from "react"
-
 import { useState } from 'react'
 import { useAuth } from '@/contexts/auth-context'
 import { useRouter } from 'next/navigation'
@@ -12,18 +11,21 @@ import { toast } from 'sonner'
 import Link from 'next/link'
 import Image from 'next/image'
 import { ThemeToggle } from '@/components/theme-toggle'
-import { TrendingUp, Users, BarChart3, Shield } from 'lucide-react'
+import { TrendingUp, Users, BarChart3, Shield, Building2 } from 'lucide-react'
 
-export default function LoginPage() {
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api'
+
+export default function RegisterPage() {
+  const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [twoFactorToken, setTwoFactorToken] = useState('')
-  const [requires2FA, setRequires2FA] = useState(false)
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [orgName, setOrgName] = useState('')
   const [isLoading, setIsLoading] = useState(false)
-  const { login, isAuthenticated, loading } = useAuth()
+  const { isAuthenticated, loading } = useAuth()
   const router = useRouter()
 
-  // Redirect if already logged in - use useEffect to avoid setState during render
+  // Redirect if already logged in
   useEffect(() => {
     if (!loading && isAuthenticated) {
       router.push('/dashboard')
@@ -39,27 +41,56 @@ export default function LoginPage() {
     )
   }
 
-  // Don't render login form if authenticated
+  // Don't render form if authenticated
   if (isAuthenticated) {
     return null
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    
+    if (password !== confirmPassword) {
+      toast.error('Passwords do not match')
+      return
+    }
+
+    if (password.length < 6) {
+      toast.error('Password must be at least 6 characters')
+      return
+    }
+
     setIsLoading(true)
 
     try {
-      const result = await login(email, password, requires2FA ? twoFactorToken : undefined)
-      
-      if (result.requires2FA) {
-        setRequires2FA(true)
-        toast.info('Please enter your 2FA code')
-      } else {
-        toast.success('Login successful!')
+      const response = await fetch(`${API_URL}/auth/register`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          name,
+          email,
+          password,
+          orgName,
+        }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Registration failed')
       }
+
+      // Store the access token
+      localStorage.setItem('accessToken', data.accessToken)
+
+      toast.success('Registration successful! Welcome to FlowCRM.')
+      // Reload the page to pick up the new auth state
+      window.location.href = '/dashboard'
     } catch (error) {
       toast.error(
-        error instanceof Error ? error.message : 'Login failed. Please try again.'
+        error instanceof Error ? error.message : 'Registration failed. Please try again.'
       )
     } finally {
       setIsLoading(false)
@@ -95,7 +126,7 @@ export default function LoginPage() {
         
         <div className="relative z-10 space-y-8">
           <h2 className="text-3xl font-semibold leading-tight">
-            Streamline your sales process with powerful CRM tools
+            Start managing your sales with powerful CRM tools
           </h2>
           
           <div className="grid grid-cols-2 gap-6">
@@ -143,7 +174,7 @@ export default function LoginPage() {
         </p>
       </div>
 
-      {/* Right Side - Login Form */}
+      {/* Right Side - Registration Form */}
       <div className="w-full lg:w-1/2 flex flex-col min-h-screen bg-background">
         {/* Top Bar with Theme Toggle */}
         <div className="flex justify-between items-center p-4">
@@ -155,27 +186,44 @@ export default function LoginPage() {
           </div>
         </div>
 
-        {/* Login Form Container */}
+        {/* Registration Form Container */}
         <div className="flex-1 flex items-center justify-center p-6">
           <div className="w-full max-w-md">
             {/* Header */}
             <div className="mb-8">
-              <h2 className="text-2xl font-bold tracking-tight">Welcome back</h2>
+              <h2 className="text-2xl font-bold tracking-tight">Create your account</h2>
               <p className="mt-2 text-muted-foreground">
-                Sign in to your account to continue
+                Get started with FlowCRM for your organization
               </p>
             </div>
 
-            {/* Login Card */}
+            {/* Registration Card */}
             <Card className="border shadow-lg">
               <CardHeader className="space-y-1 pb-4">
-                <CardTitle className="text-xl">Sign In</CardTitle>
+                <CardTitle className="text-xl">Sign Up</CardTitle>
                 <p className="text-sm text-muted-foreground">
-                  Enter your credentials to access your dashboard
+                  Fill in your details to create an account
                 </p>
               </CardHeader>
               <CardContent>
                 <form onSubmit={handleSubmit} className="space-y-4">
+                  <div className="space-y-2">
+                    <label htmlFor="name" className="text-sm font-medium">
+                      Full Name
+                    </label>
+                    <Input
+                      id="name"
+                      type="text"
+                      placeholder="John Doe"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      required
+                      disabled={isLoading}
+                      autoComplete="name"
+                      className="h-11"
+                    />
+                  </div>
+
                   <div className="space-y-2">
                     <label htmlFor="email" className="text-sm font-medium">
                       Email
@@ -194,6 +242,23 @@ export default function LoginPage() {
                   </div>
 
                   <div className="space-y-2">
+                    <label htmlFor="orgName" className="text-sm font-medium flex items-center gap-2">
+                      <Building2 className="h-4 w-4" />
+                      Organization Name
+                    </label>
+                    <Input
+                      id="orgName"
+                      type="text"
+                      placeholder="Your Company"
+                      value={orgName}
+                      onChange={(e) => setOrgName(e.target.value)}
+                      required
+                      disabled={isLoading}
+                      className="h-11"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
                     <label htmlFor="password" className="text-sm font-medium">
                       Password
                     </label>
@@ -204,35 +269,28 @@ export default function LoginPage() {
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       required
-                      disabled={isLoading || requires2FA}
-                      autoComplete="current-password"
+                      disabled={isLoading}
+                      autoComplete="new-password"
                       className="h-11"
                     />
                   </div>
 
-                  {requires2FA && (
-                    <div className="space-y-2">
-                      <label htmlFor="twoFactorToken" className="text-sm font-medium">
-                        2FA Code
-                      </label>
-                      <Input
-                        id="twoFactorToken"
-                        type="text"
-                        placeholder="Enter 6-digit code"
-                        maxLength={6}
-                        value={twoFactorToken}
-                        onChange={(e) => setTwoFactorToken(e.target.value.replace(/\D/g, ''))}
-                        required
-                        disabled={isLoading}
-                        autoComplete="one-time-code"
-                        autoFocus
-                        className="h-11"
-                      />
-                      <p className="text-xs text-muted-foreground">
-                        Enter the code from your authenticator app
-                      </p>
-                    </div>
-                  )}
+                  <div className="space-y-2">
+                    <label htmlFor="confirmPassword" className="text-sm font-medium">
+                      Confirm Password
+                    </label>
+                    <Input
+                      id="confirmPassword"
+                      type="password"
+                      placeholder="••••••••"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      required
+                      disabled={isLoading}
+                      autoComplete="new-password"
+                      className="h-11"
+                    />
+                  </div>
 
                   <Button
                     type="submit"
@@ -240,48 +298,31 @@ export default function LoginPage() {
                     size="lg"
                     disabled={isLoading}
                   >
-                    {isLoading ? 'Signing in...' : 'Sign In'}
+                    {isLoading ? 'Creating account...' : 'Create Account'}
                   </Button>
                 </form>
 
-                {/* Demo Credentials Info */}
-                <div className="mt-6 rounded-lg border bg-muted/50 p-4">
-                  <p className="text-sm font-semibold text-foreground">
-                    Demo Credentials
+                {/* Already have an account */}
+                <div className="mt-6 text-center">
+                  <p className="text-sm text-muted-foreground">
+                    Already have an account?{' '}
+                    <Link href="/login" className="text-primary hover:underline font-medium">
+                      Sign in
+                    </Link>
                   </p>
-                  <div className="mt-3 space-y-2 text-sm text-muted-foreground">
-                    <p className="flex items-center gap-2">
-                      <span className="inline-flex h-6 w-16 items-center justify-center rounded bg-primary/10 text-xs font-medium text-primary">Admin</span>
-                      <span>admin@example.com / password</span>
-                    </p>
-                    <p className="flex items-center gap-2">
-                      <span className="inline-flex h-6 w-16 items-center justify-center rounded bg-green-500/10 text-xs font-medium text-green-600">Manager</span>
-                      <span>manager@example.com / password</span>
-                    </p>
-                    <p className="flex items-center gap-2">
-                      <span className="inline-flex h-6 w-16 items-center justify-center rounded bg-blue-500/10 text-xs font-medium text-blue-600">Sales</span>
-                      <span>sales@example.com / password</span>
-                    </p>
-                  </div>
                 </div>
               </CardContent>
             </Card>
 
-            {/* Sign Up Link */}
-            <div className="mt-6 text-center">
-              <p className="text-sm text-muted-foreground">
-                Don&apos;t have an account?{' '}
-                <Link href="/register" className="text-primary hover:underline font-medium">
-                  Sign up
-                </Link>
-              </p>
-            </div>
-
             {/* Footer */}
-            <p className="mt-4 text-center text-xs text-muted-foreground">
-              By signing in, you agree to our{' '}
+            <p className="mt-6 text-center text-xs text-muted-foreground">
+              By signing up, you agree to our{' '}
               <Link href="#" className="hover:text-foreground underline">
                 Terms of Service
+              </Link>{' '}
+              and{' '}
+              <Link href="#" className="hover:text-foreground underline">
+                Privacy Policy
               </Link>
             </p>
           </div>

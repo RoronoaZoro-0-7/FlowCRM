@@ -25,6 +25,7 @@ import calendarRoutes from './routes/calendarRoutes';
 import webhookRoutes from './routes/webhookRoutes';
 import customFieldRoutes from './routes/customFieldRoutes';
 import followUpRoutes from './routes/followUpRoutes';
+import aiRoutes from './routes/aiRoutes';
 import { rateLimitApi } from './middleware/rateLimiter';
 import { REDIS_ENABLED, getRedis } from './config/redis';
 import { startWorkers } from './queues/workers';
@@ -113,6 +114,7 @@ app.use("/api/calendar", calendarRoutes);
 app.use("/api/webhooks", webhookRoutes);
 app.use("/api/custom-fields", customFieldRoutes);
 app.use("/api/follow-up", followUpRoutes);
+app.use("/api/ai", aiRoutes);
 
 httpServer.listen(3000, async () => {
     console.log('🚀 Server is running on port 3000');
